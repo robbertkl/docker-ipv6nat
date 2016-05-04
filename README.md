@@ -64,6 +64,10 @@ docker run -d --restart=always -v /var/run/docker.sock:/var/run/docker.sock:ro -
 
 The flags `--privileged` and `--net=host` are necessary because docker-ipv6nat manages the hosts IPv6 firewall using ip6tables.
 
+On some systems, IPv6 filter related kernel modules will not be loaded by default, and you'll see error messages in the log.
+Luckily, ip6tables will automatically load all necessary kernel modules for us, and it will even do so from within the container, since we're a privileged container anyway!
+To accommodate this, we need to mount the modules so ip6tables can load them: just add `-v /lib/modules:/lib/modules:ro` to the above docker run command.
+
 Alternatively, you can download the latest release from the [release page](https://github.com/robbertkl/docker-ipv6nat/releases) and run it directly on your host.
 See `docker-ipv6nat --help` for usage flags.
 
