@@ -1,10 +1,62 @@
 # docker-ipv6nat
 
-...
+This project mimics the way Docker does NAT for IPv4 and applies it to IPv6. Jump to [Usage](#usage) to get started right away.
+
+## Why would I need this?
+
+Unfortunately, initially Docker was not created with IPv6 in mind.
+It was added later and, while it has come a long way, is still not as usable as one would want.
+Much discussion is still going on as to how IPv6 should be used in a containerized world; see the various GitHub issues linked below.
+
+Currently, you can let Docker give each container an IPv6 address from your (public) pool, but this has disadvantages:
+
+* Giving each container a publicly routable address means all ports (even unexposed / unpublished ports) are suddenly reachable by everyone, if no additional filtering is done ([docker/docker#21614](https://github.com/docker/docker/issues/21614))
+* By default, each container gets a random IPv6, making it impossible to do properly do DNS; the alternative is to assign a specific IPv6 address to each container, still an administrative hassle ([docker/docker#13481](https://github.com/docker/docker/issues/13481))
+* Published ports won't work on IPv6, unless you have the userland proxy enabled (which, for now, is enabled by default in Docker)
+* The userland proxy, however, seems to be on its way out ([docker/docker#14856](https://github.com/docker/docker/issues/14856)) and has various issues, like:
+  * It can use a lot of RAM ([docker/docker#11185](https://github.com/docker/docker/issues/11185))
+  * Source IP addresses are rewritten, making it completely unusable for many purposes, e.g. mail servers ([docker/docker#17666](https://github.com/docker/docker/issues/17666), [docker/libnetwork#1099](https://github.com/docker/libnetwork/issues/1099))
+
+Special mention of [@JonasT](https://github.com/JonasT) who submitted the majority of the above issues, pointing out some of the practical issues when using IPv6 with Docker.
+
+So basically, IPv6 for Docker can (depending on your setup) be pretty unusable ([docker/docker#13481](https://github.com/docker/docker/issues/13481)) and completely inconsistent with the way how IPv4 works ([docker/docker#21951](https://github.com/docker/docker/issues/21951)).
+Docker images are mostly designed with IPv4 NAT in mind, having NAT provide a layer of security allowing only published ports through, and letting container linking or user-defined networks provide inter-container communication.
+This does not go hand in hand with the way Docker IPv6 works, requiring image maintainers to rethink/adapt their images with IPv6 in mind.
+
+## Welcome IPv6 NAT
+
+So what does this repo do? It attempts to resolve all of the above issues by managing `ip6tables` to setup IPv6 NAT for your containers, similar to how it's done by the Docker daemon for IPv4.
+
+* A ULA range ([RFC 4193](https://tools.ietf.org/html/rfc4193)) is used for containers; this automatically means the containers will NOT be publicly routable
+* Published ports are forwarded to the corresponding containers, similar to IPv4
+* The original IPv6 source addresses are maintained, again, just like with IPv4
+* Userland proxy can be turned off and IPv6 will still work
+
+This makes a transition to IPv6 completely painless, without needing to make changes to your images.
+
+Please note:
+
+* The Docker network API is required, so at least Docker 1.9.0
+* It triggers only on ULA ranges (so within `fc00::/7`), e.g. `fd00:dead:beef::/48`
+* Only networks with driver `bridge` are supported; this includes Docker's default network ("bridge"), as well as user-defined bridge networks
+
+## NAT on IPv6, are you insane?
+
+First of all, thank you for questioning my sanity!
+I'm aware NAT on IPv6 is almost always a no-go, since the huge number of available addresses removes the need for it.
+However, considering all the above issues related to IPv6 are fixed with IPv6 NAT, I thought: why not?
+The concepts of working with Docker images/containers rely heavily on IPv4 NAT, so if this makes IPv6 with Docker usable in the same way, be happy.
+I'm in no way "pro IPv6 NAT" in the general case; I'm just "pro working shit".
+
+Probably IPv6 NAT will never make it into Docker, just because it's not "the right way".
+This is fine; when a better alternative is found, I'd be happy to use it and get rid of this repo.
+However, since the IPv6 support just isn't there yet, and discussions are still ongoing, this repo can be used in the meantime.
+
+Still think IPv6 NAT is a bad idea? That's fine, you're absolutely free to NOT use this repo.
 
 ## Usage
 
-The easiest way is to just run the Docker image:
+The recommended way is to run the Docker image:
 
 ```
 docker run -d --restart=always -v /var/run/docker.sock:/var/run/docker.sock:ro --privileged --net=host robbertkl/ipv6nat
@@ -12,7 +64,7 @@ docker run -d --restart=always -v /var/run/docker.sock:/var/run/docker.sock:ro -
 
 The flags `--privileged` and `--net=host` are necessary because docker-ipv6nat manages the hosts IPv6 firewall using ip6tables.
 
-Alternatively, you can download the latest release from the [release page](https://github.com/robbertkl/docker-ipv6nat/releases) and run it on your host.
+Alternatively, you can download the latest release from the [release page](https://github.com/robbertkl/docker-ipv6nat/releases) and run it directly on your host.
 See `docker-ipv6nat --help` for usage flags.
 
 ## Docker IPv6 configuration
@@ -34,7 +86,7 @@ docker network create --ipv6 --subnet=fd00:dead:beef::/48 mynetwork
 
 Then start your containers with `--net=mynetwork`.
 
-Docker-ipv6nat respects all supported `com.docker.network.bridge.` options (pass them with `-o`) and adds 1 additional option:
+Docker-ipv6nat respects all supported `com.docker.network.bridge.*` options (pass them with `-o`) and adds 1 additional option:
 
 * `com.docker.network.bridge.host_binding_ipv6`: Default IPv6 address when binding container ports (defaults to `::/0`)
 
