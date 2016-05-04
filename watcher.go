@@ -140,7 +140,7 @@ func (w *watcher) regenerate() error {
 		return &RecoverableError{err}
 	}
 
-	containerIDs := make([]string, len(networks))
+	containerIDs := make([]string, len(apiContainers))
 	for index, apiContainer := range apiContainers {
 		containerIDs[index] = apiContainer.ID
 		container, err := w.client.InspectContainer(apiContainer.ID)
