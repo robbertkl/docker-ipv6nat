@@ -121,7 +121,9 @@ func (s *state) parseNetwork(network *docker.Network) *managedNetwork {
 		return nil
 	}
 
-	if !network.EnableIPv6 || network.Driver != "bridge" {
+	// Don't check network.EnableIPv6, since this will be false before Docker 1.11.0, even if we have IPv6 subnets.
+
+	if network.Driver != "bridge" {
 		return nil
 	}
 
