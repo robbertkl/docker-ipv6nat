@@ -92,7 +92,9 @@ Then start your containers with `--net=mynetwork`.
 
 Docker-ipv6nat respects all supported `com.docker.network.bridge.*` options (pass them with `-o`) and adds 1 additional option:
 
-* `com.docker.network.bridge.host_binding_ipv6`: Default IPv6 address when binding container ports (defaults to `::/0`)
+* `com.docker.network.bridge.host_binding_ipv6`: Default IPv6 address when binding container ports (do not include subnet/prefixlen; defaults to `::`, i.e. all IPv6 addresses)
+
+Please note this option can only be set on user-defined networks, as the default bridge network is controlled by the Docker daemon.
 
 ## Authors
 
