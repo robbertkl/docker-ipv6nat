@@ -169,10 +169,10 @@ func (s *state) parseNetwork(network *docker.Network) *managedNetwork {
 				break
 			}
 			n.masquerade = b
-		case "com.docker.network.bridge.binding_ipv6":
+		case "com.docker.network.bridge.host_binding_ipv6":
 			ip := net.ParseIP(value)
 			if ip == nil || ip.To4() != nil {
-				log.Printf("invalid value for com.docker.network.bridge.binding_ipv6 (network %s)", network.ID)
+				log.Printf("invalid value for com.docker.network.bridge.host_binding_ipv6 (network %s)", network.ID)
 				break
 			}
 			n.binding = ip
