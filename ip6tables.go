@@ -1,7 +1,7 @@
 package dockeripv6nat
 
 import (
-	"github.com/robbertkl/go-iptables/iptables"
+	"github.com/coreos/go-iptables/iptables"
 )
 
 type Table string

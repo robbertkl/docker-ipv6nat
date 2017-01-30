@@ -5,7 +5,7 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/robbertkl/go-iptables/iptables"
+	"github.com/coreos/go-iptables/iptables"
 )
 
 type managedNetwork struct {
