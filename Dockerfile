@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM alpine:3.5
 MAINTAINER Robbert Klarenbeek <robbertkl@renbeek.nl>
 
 RUN apk add --no-cache \
