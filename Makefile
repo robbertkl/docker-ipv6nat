@@ -7,7 +7,9 @@ LDFLAGS := -X main.buildVersion=$(TAG)
 
 .SILENT:
 
-all:
+all: $(NAME) $(NAME).armhf
+
+$(NAME):
 	docker run --rm \
 		-v "$(PWD)":"$(DIR)" \
 		-w "$(DIR)" \
@@ -15,4 +17,15 @@ all:
 		-e GOARCH=amd64 \
 		-e CGO_ENABLED=0 \
 		golang:"$(GO)" \
-		go build -ldflags "$(LDFLAGS)" "./cmd/$(NAME)"
+		go build -o "$@" -ldflags "$(LDFLAGS)" "./cmd/$(NAME)"
+
+$(NAME).armhf:
+	docker run --rm \
+		-v "$(PWD)":"$(DIR)" \
+		-w "$(DIR)" \
+		-e GOOS=linux \
+		-e GOARCH=arm \
+		-e GOARM=7 \
+		-e CGO_ENABLED=0 \
+		golang:"$(GO)" \
+		go build -o "$@" -ldflags "$(LDFLAGS)" "./cmd/$(NAME)"
