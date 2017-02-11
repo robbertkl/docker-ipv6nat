@@ -1,4 +1,5 @@
 .DS_Store
 
 /docker-ipv6nat
+/docker-ipv6nat.aarch64
 /docker-ipv6nat.armhf
