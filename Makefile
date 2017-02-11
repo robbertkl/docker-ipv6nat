@@ -4,7 +4,7 @@ DIR := /go/src/$(PKG)
 GO := 1.7.5-alpine3.5
 TAG := `git describe --tags`
 LDFLAGS := -X main.buildVersion=$(TAG)
-TARGETS := $(NAME) $(NAME).aarch64 $(NAME).armhf
+TARGETS := $(NAME).amd64 $(NAME).aarch64 $(NAME).armhf
 
 .SILENT:
 
@@ -15,7 +15,7 @@ all: clean $(TARGETS)
 clean:
 	rm -f $(TARGETS)
 
-$(NAME):
+$(NAME).amd64:
 	docker run --rm \
 		-v "$(PWD)":"$(DIR)" \
 		-w "$(DIR)" \
