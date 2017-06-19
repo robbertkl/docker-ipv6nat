@@ -88,7 +88,7 @@ To try it out without messing with your Docker daemon flags, or if you're alread
 docker network create --ipv6 --subnet=fd00:dead:beef::/48 mynetwork
 ```
 
-Then start your containers with `--net=mynetwork`.
+Then start all of your other containers with `--net=mynetwork`. Please note the `robbertkl/ipv6nat` container still needs to run with `--net=host` to access the host firewall.
 
 Docker-ipv6nat respects all supported `com.docker.network.bridge.*` options (pass them with `-o`) and adds 1 additional option:
 
