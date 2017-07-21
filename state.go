@@ -237,7 +237,7 @@ func (s *state) parseContainer(container *docker.Container) *managedContainer {
 		for _, binding := range bindings {
 			hostAddress := network.binding
 
-			if binding.HostIP != "" {
+			if binding.HostIP != "" && binding.HostIP != "0.0.0.0" {
 				ip := net.ParseIP(binding.HostIP)
 				if ip == nil || ip.To4() != nil {
 					// Skip bindings to IPv4.
