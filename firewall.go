@@ -29,35 +29,29 @@ type TableChain struct {
 }
 
 type rule struct {
-	table   Table
-	chain   Chain
+	tc      TableChain
 	spec    []string
 	prepend bool
 }
 
 func NewRule(table Table, chain Chain, spec ...string) *rule {
 	return &rule{
-		table: table,
-		chain: chain,
-		spec:  spec,
+		tc:      TableChain{table, chain},
+		spec:    spec,
+		prepend: false,
 	}
 }
 
 func NewPrependRule(table Table, chain Chain, spec ...string) *rule {
 	return &rule{
-		table:   table,
-		chain:   chain,
+		tc:      TableChain{table, chain},
 		spec:    spec,
 		prepend: true,
 	}
 }
 
 func (r1 *rule) Equal(r2 *rule) bool {
-	if r1.table != r2.table {
-		return false
-	}
-
-	if r1.chain != r2.chain {
+	if r1.tc != r2.tc {
 		return false
 	}
 
@@ -101,80 +95,58 @@ func (s1 *Ruleset) Diff(s2 *Ruleset) *Ruleset {
 	return &s
 }
 
-type ip6tables struct {
-	iptables.IPTables
+type firewall struct {
+	ipt          *iptables.IPTables
+	ruleCounters map[TableChain]int
 }
 
-func NewIP6Tables() (*ip6tables, error) {
+func NewFirewall() (*firewall, error) {
 	ipt, err := iptables.NewWithProtocol(iptables.ProtocolIPv6)
 	if err != nil {
 		return nil, err
 	}
 
-	return &ip6tables{*ipt}, nil
+	return &firewall{ipt: ipt, ruleCounters: make(map[TableChain]int)}, nil
 }
 
-func (ipt *ip6tables) SafeDelete(table, chain string, rulespec ...string) error {
-	exists, err := ipt.Exists(table, chain, rulespec...)
-	if err != nil {
-		return err
-	}
-
-	if exists {
-		return ipt.Delete(table, chain, rulespec...)
-	}
-
-	return nil
-}
-
-func (ipt *ip6tables) InsertUnique(table, chain string, pos int, rulespec ...string) error {
-	exists, err := ipt.Exists(table, chain, rulespec...)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
-		return ipt.Insert(table, chain, pos, rulespec...)
-	}
-
-	return nil
-}
-
-func (ipt *ip6tables) Prepend(table, chain string, rulespec ...string) error {
-	return ipt.Insert(table, chain, 1, rulespec...)
-}
-
-func (ipt *ip6tables) PrependUnique(table, chain string, rulespec ...string) error {
-	return ipt.InsertUnique(table, chain, 1, rulespec...)
-}
-
-func (ipt *ip6tables) EnsureTableChains(tableChains []TableChain) error {
+func (fw *firewall) EnsureTableChains(tableChains []TableChain) error {
 	for _, tc := range tableChains {
-		if err := ipt.ClearChain(string(tc.table), string(tc.chain)); err != nil {
+		if err := fw.ipt.ClearChain(string(tc.table), string(tc.chain)); err != nil {
 			return err
 		}
+		fw.ruleCounters[tc] = 0
 	}
 
 	return nil
 }
 
-func (ipt *ip6tables) RemoveTableChains(tableChains []TableChain) error {
+func (fw *firewall) RemoveTableChains(tableChains []TableChain) error {
 	for _, tc := range tableChains {
-		ipt.ClearChain(string(tc.table), string(tc.chain))
-		ipt.DeleteChain(string(tc.table), string(tc.chain))
+		fw.ipt.ClearChain(string(tc.table), string(tc.chain))
+		fw.ipt.DeleteChain(string(tc.table), string(tc.chain))
+		fw.ruleCounters[tc] = 0
 	}
 
 	return nil
 }
 
-func (ipt *ip6tables) EnsureRules(rules *Ruleset) error {
+func (fw *firewall) EnsureRules(rules *Ruleset) error {
 	// A regular loop to append only the non-prepend rules
 	for _, rule := range *rules {
 		if rule.prepend {
 			continue
 		}
-		if err := ipt.AppendUnique(string(rule.table), string(rule.chain), rule.spec...); err != nil {
+
+		exists, err := fw.ipt.Exists(string(rule.tc.table), string(rule.tc.chain), rule.spec...)
+		if err != nil {
 			return err
+		}
+
+		if !exists {
+			if err := fw.ipt.Insert(string(rule.tc.table), string(rule.tc.chain), fw.ruleCounters[rule.tc]+1, rule.spec...); err != nil {
+				return err
+			}
+			fw.ruleCounters[rule.tc]++
 		}
 	}
 
@@ -184,18 +156,36 @@ func (ipt *ip6tables) EnsureRules(rules *Ruleset) error {
 		if !rule.prepend {
 			continue
 		}
-		if err := ipt.PrependUnique(string(rule.table), string(rule.chain), rule.spec...); err != nil {
+
+		exists, err := fw.ipt.Exists(string(rule.tc.table), string(rule.tc.chain), rule.spec...)
+		if err != nil {
 			return err
+		}
+
+		if !exists {
+			if err := fw.ipt.Insert(string(rule.tc.table), string(rule.tc.chain), 1, rule.spec...); err != nil {
+				return err
+			}
+			fw.ruleCounters[rule.tc]++
 		}
 	}
 
 	return nil
 }
 
-func (ipt *ip6tables) RemoveRules(rules *Ruleset) error {
+func (fw *firewall) RemoveRules(rules *Ruleset) error {
 	for _, rule := range *rules {
-		if err := ipt.SafeDelete(string(rule.table), string(rule.chain), rule.spec...); err != nil {
+
+		exists, err := fw.ipt.Exists(string(rule.tc.table), string(rule.tc.chain), rule.spec...)
+		if err != nil {
 			return err
+		}
+
+		if exists {
+			if err := fw.ipt.Delete(string(rule.tc.table), string(rule.tc.chain), rule.spec...); err != nil {
+				return err
+			}
+			fw.ruleCounters[rule.tc]--
 		}
 	}
 

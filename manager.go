@@ -33,7 +33,7 @@ type managedPort struct {
 }
 
 type manager struct {
-	iptables    *ip6tables
+	fw          *firewall
 	hairpinMode bool
 }
 
@@ -43,21 +43,21 @@ func NewManager() (*manager, error) {
 		return nil, err
 	}
 
-	ipt, err := NewIP6Tables()
+	fw, err := NewFirewall()
 	if err != nil {
 		return nil, err
 	}
 
-	if err := ipt.EnsureTableChains(getCustomTableChains()); err != nil {
+	if err := fw.EnsureTableChains(getCustomTableChains()); err != nil {
 		return nil, err
 	}
 
-	if err := ipt.EnsureRules(getBaseRules(hairpinMode)); err != nil {
+	if err := fw.EnsureRules(getBaseRules(hairpinMode)); err != nil {
 		return nil, err
 	}
 
 	return &manager{
-		iptables:    ipt,
+		fw:          fw,
 		hairpinMode: hairpinMode,
 	}, nil
 }
@@ -97,11 +97,11 @@ func detectHairpinMode() (bool, error) {
 }
 
 func (m *manager) Cleanup() error {
-	if err := m.iptables.RemoveRules(getBaseRules(m.hairpinMode)); err != nil {
+	if err := m.fw.RemoveRules(getBaseRules(m.hairpinMode)); err != nil {
 		return err
 	}
 
-	if err := m.iptables.RemoveTableChains(getCustomTableChains()); err != nil {
+	if err := m.fw.RemoveTableChains(getCustomTableChains()); err != nil {
 		return err
 	}
 
@@ -117,21 +117,21 @@ func (m *manager) ReplaceContainer(oldContainer, newContainer *managedContainer)
 }
 
 func (m *manager) EnsureInterconnectionRules(network *managedNetwork, otherNetworks []*managedNetwork) error {
-	return m.iptables.EnsureRules(getInterconnectionRules(network, otherNetworks))
+	return m.fw.EnsureRules(getInterconnectionRules(network, otherNetworks))
 }
 
 func (m *manager) RemoveInterconnectionRules(network *managedNetwork, otherNetworks []*managedNetwork) error {
-	return m.iptables.RemoveRules(getInterconnectionRules(network, otherNetworks))
+	return m.fw.RemoveRules(getInterconnectionRules(network, otherNetworks))
 }
 
 func (m *manager) applyRules(oldRules, newRules *Ruleset) error {
 	oldRules = oldRules.Diff(newRules)
 
-	if err := m.iptables.EnsureRules(newRules); err != nil {
+	if err := m.fw.EnsureRules(newRules); err != nil {
 		return err
 	}
 
-	if err := m.iptables.RemoveRules(oldRules); err != nil {
+	if err := m.fw.RemoveRules(oldRules); err != nil {
 		return err
 	}
 
