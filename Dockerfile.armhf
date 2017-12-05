@@ -1,4 +1,4 @@
-FROM arm32v6/alpine:3.6
+FROM arm32v6/alpine:3.7
 MAINTAINER Robbert Klarenbeek <robbertkl@renbeek.nl>
 
 ENV QEMU_EXECVE 1
