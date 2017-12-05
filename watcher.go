@@ -15,8 +15,8 @@ type RecoverableError struct {
 	err error
 }
 
-func (err *RecoverableError) Error() string {
-	return err.Error()
+func (re *RecoverableError) Error() string {
+	return re.err.Error()
 }
 
 // Number of seconds to wait after connection failure.
