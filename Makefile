@@ -1,7 +1,7 @@
 NAME := docker-ipv6nat
 PKG := github.com/robbertkl/$(NAME)
 DIR := /go/src/$(PKG)
-GO := 1.9.1-alpine
+GO := 1.9.2-alpine
 TAG := `git describe --tags`
 LDFLAGS := -X main.buildVersion=$(TAG)
 TARGETS := $(NAME).amd64 $(NAME).aarch64 $(NAME).armhf
