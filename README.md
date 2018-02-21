@@ -64,10 +64,6 @@ docker run -d --restart=always -v /var/run/docker.sock:/var/run/docker.sock:ro -
 
 The flags `--privileged` and `--net=host` are necessary because docker-ipv6nat manages the hosts IPv6 firewall using ip6tables.
 
-On some systems, IPv6 filter related kernel modules will not be loaded by default, and you'll see error messages in the log.
-Luckily, ip6tables will automatically load all necessary kernel modules for us, and it will even do so from within the container, since we're a privileged container anyway!
-To accommodate this, we need to mount the modules so ip6tables can load them: just add `-v /lib/modules:/lib/modules:ro` to the above docker run command.
-
 Alternatively, you can download the latest release from the [release page](https://github.com/robbertkl/docker-ipv6nat/releases) and run it directly on your host.
 See `docker-ipv6nat --help` for usage flags.
 
@@ -95,6 +91,24 @@ Docker-ipv6nat respects all supported `com.docker.network.bridge.*` options (pas
 * `com.docker.network.bridge.host_binding_ipv6`: Default IPv6 address when binding container ports (do not include subnet/prefixlen; defaults to `::`, i.e. all IPv6 addresses)
 
 Please note this option can only be set on user-defined networks, as the default bridge network is controlled by the Docker daemon.
+
+## Troubleshooting
+
+On some systems, IPv6 filter related kernel modules will not be loaded by default, and you'll see error messages in the log.
+Luckily, ip6tables will automatically load all necessary kernel modules for us, and it will even do so from within the container, since we're a privileged container anyway!
+To accommodate this, we need to mount the modules so ip6tables can load them: just add `-v /lib/modules:/lib/modules:ro` to the above docker run command.
+
+Also, if you can see the added ip6tables rules, but it's still not working, it might be that forwarding is not enabled for IPv6.
+This is usually the case if you're using router advertisements (e.g. having `net.ipv6.conf.eth0.accept_ra=1`).
+Enabling forwarding in such a case will break router advertisements. To overcome this, use the following in your `/etc/sysctl.conf`:
+
+```
+net.ipv6.conf.eth0.accept_ra = 2
+net.ipv6.conf.all.forwarding = 1
+net.ipv6.conf.default.forwarding = 1
+```
+
+The special value of 2 will allow accepting router advertisements even if forwarding is enabled.
 
 ## Authors
 
