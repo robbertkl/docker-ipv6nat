@@ -10,9 +10,15 @@
 [submodule "vendor/github.com/fsouza/go-dockerclient"]
 	path = vendor/github.com/fsouza/go-dockerclient
 	url = https://github.com/fsouza/go-dockerclient
-[submodule "vendor/github.com/hashicorp/go-cleanhttp"]
-	path = vendor/github.com/hashicorp/go-cleanhttp
-	url = https://github.com/hashicorp/go-cleanhttp
-[submodule "vendor/golang.org/x/net"]
-	path = vendor/golang.org/x/net
-	url = https://go.googlesource.com/net
+[submodule "vendor/github.com/Nvveen/Gotty"]
+	path = vendor/github.com/Nvveen/Gotty
+	url = https://github.com/Nvveen/Gotty
+[submodule "vendor/github.com/sirupsen/logrus"]
+	path = vendor/github.com/sirupsen/logrus
+	url = https://github.com/sirupsen/logrus
+[submodule "vendor/golang.org/x/crypto"]
+	path = vendor/golang.org/x/crypto
+	url = https://go.googlesource.com/crypto
+[submodule "vendor/golang.org/x/sys"]
+	path = vendor/golang.org/x/sys
+	url = https://go.googlesource.com/sys
