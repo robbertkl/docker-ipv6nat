@@ -174,6 +174,11 @@ func getRulesForNetwork(network *managedNetwork, hairpinMode bool) *Ruleset {
 		return &Ruleset{}
 	}
 
+	iccAction := "ACCEPT"
+	if !network.icc {
+		iccAction = "DROP"
+	}
+
 	if network.internal {
 		return &Ruleset{
 			NewPrependRule(TableFilter, ChainDockerIsolation,
@@ -184,12 +189,11 @@ func getRulesForNetwork(network *managedNetwork, hairpinMode bool) *Ruleset {
 				"!", "-d", network.subnet.String(),
 				"-i", network.bridge,
 				"-j", "DROP"),
+			NewRule(TableFilter, ChainForward,
+				"-i", network.bridge,
+				"-o", network.bridge,
+				"-j", iccAction),
 		}
-	}
-
-	iccAction := "ACCEPT"
-	if !network.icc {
-		iccAction = "DROP"
 	}
 
 	rs := Ruleset{
