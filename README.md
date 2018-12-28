@@ -64,6 +64,8 @@ docker run -d --restart=always -v /var/run/docker.sock:/var/run/docker.sock:ro -
 
 The flags `--privileged` and `--net=host` are necessary because docker-ipv6nat manages the hosts IPv6 firewall using ip6tables.
 
+To limit runtime privileges as a security precaution, the `--privileged` flag can be replaced with `--cap-add=NET_ADMIN --cap-add=SYS_MODULE`.
+
 Alternatively, you can download the latest release from the [release page](https://github.com/robbertkl/docker-ipv6nat/releases) and run it directly on your host.
 See `docker-ipv6nat --help` for usage flags.
 
