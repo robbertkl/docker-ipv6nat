@@ -108,7 +108,10 @@ func (w *watcher) processOnce() (bool, error) {
 		if !ok {
 			return false, &RecoverableError{errors.New("docker daemon connection interrupted")}
 		}
-		w.handleEvent(event)
+		if err := w.handleEvent(event); err != nil {
+			// Wrap in a RecoverableError so that a regenerate will be initiated.
+			return false, &RecoverableError{err}
+		}
 	case sig := <-w.signalChannel:
 		if sig == syscall.SIGHUP {
 			// Return a RecoverableError so that a regenerate will be initiated.
