@@ -97,7 +97,6 @@ func (s1 *Ruleset) Diff(s2 *Ruleset) *Ruleset {
 
 type firewall struct {
 	ipt          *iptables.IPTables
-	ruleCounters map[TableChain]int
 }
 
 func NewFirewall() (*firewall, error) {
@@ -106,7 +105,7 @@ func NewFirewall() (*firewall, error) {
 		return nil, err
 	}
 
-	return &firewall{ipt: ipt, ruleCounters: make(map[TableChain]int)}, nil
+	return &firewall{ipt: ipt}, nil
 }
 
 func (fw *firewall) EnsureTableChains(tableChains []TableChain) error {
@@ -114,7 +113,6 @@ func (fw *firewall) EnsureTableChains(tableChains []TableChain) error {
 		if err := fw.ipt.ClearChain(string(tc.table), string(tc.chain)); err != nil {
 			return err
 		}
-		fw.ruleCounters[tc] = 0
 	}
 
 	return nil
@@ -124,7 +122,6 @@ func (fw *firewall) RemoveTableChains(tableChains []TableChain) error {
 	for _, tc := range tableChains {
 		fw.ipt.ClearChain(string(tc.table), string(tc.chain))
 		fw.ipt.DeleteChain(string(tc.table), string(tc.chain))
-		fw.ruleCounters[tc] = 0
 	}
 
 	return nil
@@ -143,10 +140,9 @@ func (fw *firewall) EnsureRules(rules *Ruleset) error {
 		}
 
 		if !exists {
-			if err := fw.ipt.Insert(string(rule.tc.table), string(rule.tc.chain), fw.ruleCounters[rule.tc]+1, rule.spec...); err != nil {
+			if err := fw.ipt.Append(string(rule.tc.table), string(rule.tc.chain), rule.spec...); err != nil {
 				return err
 			}
-			fw.ruleCounters[rule.tc]++
 		}
 	}
 
@@ -166,7 +162,6 @@ func (fw *firewall) EnsureRules(rules *Ruleset) error {
 			if err := fw.ipt.Insert(string(rule.tc.table), string(rule.tc.chain), 1, rule.spec...); err != nil {
 				return err
 			}
-			fw.ruleCounters[rule.tc]++
 		}
 	}
 
@@ -185,7 +180,6 @@ func (fw *firewall) RemoveRules(rules *Ruleset) error {
 			if err := fw.ipt.Delete(string(rule.tc.table), string(rule.tc.chain), rule.spec...); err != nil {
 				return err
 			}
-			fw.ruleCounters[rule.tc]--
 		}
 	}
 
