@@ -1,6 +1,8 @@
 package dockeripv6nat
 
 import (
+	"strings"
+
 	"github.com/coreos/go-iptables/iptables"
 )
 
@@ -50,6 +52,10 @@ func NewPrependRule(table Table, chain Chain, spec ...string) *rule {
 	}
 }
 
+func (r *rule) hash() string {
+	return strings.Join(r.spec, "#")
+}
+
 func (r1 *rule) Equal(r2 *rule) bool {
 	if r1.tc != r2.tc {
 		return false
@@ -59,7 +65,7 @@ func (r1 *rule) Equal(r2 *rule) bool {
 		return false
 	}
 
-	for index, _ := range r1.spec {
+	for index := range r1.spec {
 		if r1.spec[index] != r2.spec[index] {
 			return false
 		}
@@ -96,8 +102,8 @@ func (s1 *Ruleset) Diff(s2 *Ruleset) *Ruleset {
 }
 
 type firewall struct {
-	ipt          *iptables.IPTables
-	ruleCounters map[TableChain]int
+	ipt         *iptables.IPTables
+	activeRules map[TableChain]map[string]bool
 }
 
 func NewFirewall() (*firewall, error) {
@@ -106,7 +112,18 @@ func NewFirewall() (*firewall, error) {
 		return nil, err
 	}
 
-	return &firewall{ipt: ipt, ruleCounters: make(map[TableChain]int)}, nil
+	return &firewall{ipt: ipt, activeRules: make(map[TableChain]map[string]bool)}, nil
+}
+
+func (fw *firewall) activateRule(r *rule) {
+	if _, exists := fw.activeRules[r.tc]; !exists {
+		fw.activeRules[r.tc] = make(map[string]bool)
+	}
+	fw.activeRules[r.tc][r.hash()] = true
+}
+
+func (fw *firewall) deactivateRule(r *rule) {
+	delete(fw.activeRules[r.tc], r.hash())
 }
 
 func (fw *firewall) EnsureTableChains(tableChains []TableChain) error {
@@ -114,7 +131,7 @@ func (fw *firewall) EnsureTableChains(tableChains []TableChain) error {
 		if err := fw.ipt.ClearChain(string(tc.table), string(tc.chain)); err != nil {
 			return err
 		}
-		fw.ruleCounters[tc] = 0
+		delete(fw.activeRules, tc)
 	}
 
 	return nil
@@ -124,7 +141,7 @@ func (fw *firewall) RemoveTableChains(tableChains []TableChain) error {
 	for _, tc := range tableChains {
 		fw.ipt.ClearChain(string(tc.table), string(tc.chain))
 		fw.ipt.DeleteChain(string(tc.table), string(tc.chain))
-		fw.ruleCounters[tc] = 0
+		delete(fw.activeRules, tc)
 	}
 
 	return nil
@@ -143,11 +160,11 @@ func (fw *firewall) EnsureRules(rules *Ruleset) error {
 		}
 
 		if !exists {
-			if err := fw.ipt.Insert(string(rule.tc.table), string(rule.tc.chain), fw.ruleCounters[rule.tc]+1, rule.spec...); err != nil {
+			if err := fw.ipt.Insert(string(rule.tc.table), string(rule.tc.chain), len(fw.activeRules[rule.tc])+1, rule.spec...); err != nil {
 				return err
 			}
-			fw.ruleCounters[rule.tc]++
 		}
+		fw.activateRule(rule)
 	}
 
 	// Loop in reverse to insert the prepend rules to the start of the chain
@@ -166,8 +183,8 @@ func (fw *firewall) EnsureRules(rules *Ruleset) error {
 			if err := fw.ipt.Insert(string(rule.tc.table), string(rule.tc.chain), 1, rule.spec...); err != nil {
 				return err
 			}
-			fw.ruleCounters[rule.tc]++
 		}
+		fw.activateRule(rule)
 	}
 
 	return nil
@@ -185,8 +202,8 @@ func (fw *firewall) RemoveRules(rules *Ruleset) error {
 			if err := fw.ipt.Delete(string(rule.tc.table), string(rule.tc.chain), rule.spec...); err != nil {
 				return err
 			}
-			fw.ruleCounters[rule.tc]--
 		}
+		fw.deactivateRule(rule)
 	}
 
 	return nil

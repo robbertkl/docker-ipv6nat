@@ -140,9 +140,9 @@ func (m *manager) applyRules(oldRules, newRules *Ruleset) error {
 
 func getCustomTableChains() []TableChain {
 	return []TableChain{
-		TableChain{TableFilter, ChainDocker},
-		TableChain{TableFilter, ChainDockerIsolation},
-		TableChain{TableNat, ChainDocker},
+		{TableFilter, ChainDocker},
+		{TableFilter, ChainDockerIsolation},
+		{TableNat, ChainDocker},
 	}
 }
 

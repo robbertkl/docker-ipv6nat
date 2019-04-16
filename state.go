@@ -45,7 +45,7 @@ func (s *state) Cleanup() error {
 }
 
 func (s *state) RemoveMissingNetworks(networkIDs []string) error {
-	for id, _ := range s.networks {
+	for id := range s.networks {
 		if !contains(networkIDs, id) {
 			if err := s.UpdateNetwork(id, nil); err != nil {
 				return err
@@ -57,7 +57,7 @@ func (s *state) RemoveMissingNetworks(networkIDs []string) error {
 }
 
 func (s *state) RemoveMissingContainers(containerIDs []string) error {
-	for id, _ := range s.containers {
+	for id := range s.containers {
 		if !contains(containerIDs, id) {
 			if err := s.UpdateContainer(id, nil); err != nil {
 				return err
