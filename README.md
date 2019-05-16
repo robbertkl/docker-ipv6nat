@@ -66,6 +66,8 @@ The flags `--privileged` and `--net=host` are necessary because docker-ipv6nat m
 
 To limit runtime privileges as a security precaution, the `--privileged` flag can be replaced with `--cap-add=NET_ADMIN --cap-add=SYS_MODULE`.
 
+If you're a security fan (it's not bad), you can drop all capabilities `--cap-drop=ALL` and leave only `--cap-add=NET_RAW --cap-add=NET_ADMIN --cap-add=SYS_MODULE`. About it you can read in a good [article](https://www.redhat.com/en/blog/secure-your-containers-one-weird-trick) from RedHat.
+
 Alternatively, you can download the latest release from the [release page](https://github.com/robbertkl/docker-ipv6nat/releases) and run it directly on your host.
 See `docker-ipv6nat --help` for usage flags.
 
