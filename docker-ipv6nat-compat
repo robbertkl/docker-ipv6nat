@@ -1,17 +1,17 @@
 #!/bin/sh
 
-SUFFIX=""
-if /sbin/iptables-compat -L | grep -q "Chain DOCKER "
+BINARY="xtables-legacy-multi"
+if iptables-nft -L | grep -q "Chain DOCKER "
 then
-  SUFFIX="-compat"
+  BINARY="xtables-nft-multi"
 fi
 
-ln -nfs "/sbin/iptables${SUFFIX}"          /usr/local/bin/iptables
-ln -nfs "/sbin/iptables${SUFFIX}-save"     /usr/local/bin/iptables-save
-ln -nfs "/sbin/iptables${SUFFIX}-restore"  /usr/local/bin/iptables-restore
-ln -nfs "/sbin/ip6tables${SUFFIX}"         /usr/local/bin/ip6tables
-ln -nfs "/sbin/ip6tables${SUFFIX}-save"    /usr/local/bin/ip6tables-save
-ln -nfs "/sbin/ip6tables${SUFFIX}-restore" /usr/local/bin/ip6tables-restore
+ln -nfs "${BINARY}" /sbin/iptables
+ln -nfs "${BINARY}" /sbin/iptables-save
+ln -nfs "${BINARY}" /sbin/iptables-restore
+ln -nfs "${BINARY}" /sbin/ip6tables
+ln -nfs "${BINARY}" /sbin/ip6tables-save
+ln -nfs "${BINARY}" /sbin/ip6tables-restore
 hash -r
 
 exec /docker-ipv6nat "${@}"
