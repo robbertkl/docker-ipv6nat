@@ -96,6 +96,30 @@ Docker-ipv6nat respects all supported `com.docker.network.bridge.*` options (pas
 
 Please note this option can only be set on user-defined networks, as the default bridge network is controlled by the Docker daemon.
 
+## Swarm mode support
+
+As mentioned above, docker-ipv6nat ip6tables changes affects only `bridge` type networks, so `overlay` networks are out of the window. Despite of that fact, in order to NAT outgoing traffic from a container to the outside world we can use the swarm `docker_gwbridge` which is a `bridge` network that every container in your swarm will get a 'leg' in.
+
+When you run `docker swarm init` a default bridge for the swarm is created named `docker_gwbridge` which is equivalent to `docker0` for standalone docker engines. the thing is that it's configured by default to prevent ip_forwarding
+
+So the workaround is to create the `docker_gwbridge` with ip_forwarding enabled before you run the `docker swarm init`
+in this way we managed to access the outside world components and yet keep the container within the swarm overlay network to enjoy all the benefits of swarm.
+
+Example:
+```bash
+docker network create \
+ --ipv6 \
+ --subnet 172.20.0.0/20 \
+ --gateway 172.20.0.1 \
+ --gateway fd00:3984:3989::1 \
+ --subnet fd00:3984:3989::/64 \
+ --opt com.docker.network.bridge.name=docker_gwbridge \
+ --opt com.docker.network.bridge.enable_icc=true \
+ --opt com.docker.network.bridge.enable_ip_forwarding=true \
+ --opt com.docker.network.bridge.enable_ip_masquerade=true \
+ docker_gwbridge
+```
+
 ## Troubleshooting
 
 On some systems, IPv6 filter related kernel modules will not be loaded by default, and you'll see error messages in the log.
