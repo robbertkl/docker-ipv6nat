@@ -13,6 +13,6 @@
 [submodule "vendor/github.com/ijc/Gotty"]
 	path = vendor/github.com/ijc/Gotty
 	url = https://github.com/ijc/Gotty
-[submodule "vendor/github.com/robbertkl/go-iptables"]
-	path = vendor/github.com/robbertkl/go-iptables
-	url = https://github.com/robbertkl/go-iptables
+[submodule "vendor/github.com/coreos/go-iptables"]
+	path = vendor/github.com/coreos/go-iptables
+	url = https://github.com/coreos/go-iptables
