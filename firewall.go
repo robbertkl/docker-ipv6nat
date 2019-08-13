@@ -104,15 +104,20 @@ func (s1 *Ruleset) Diff(s2 *Ruleset) *Ruleset {
 type firewall struct {
 	ipt         *iptables.IPTables
 	activeRules map[TableChain]map[string]bool
+	debug       bool
 }
 
-func NewFirewall() (*firewall, error) {
+func NewFirewall(debug bool) (*firewall, error) {
 	ipt, err := iptables.NewWithProtocol(iptables.ProtocolIPv6)
 	if err != nil {
 		return nil, err
 	}
 
-	return &firewall{ipt: ipt, activeRules: make(map[TableChain]map[string]bool)}, nil
+	return &firewall{
+		ipt:         ipt,
+		activeRules: make(map[TableChain]map[string]bool),
+		debug:       debug,
+	}, nil
 }
 
 func (fw *firewall) activateRule(r *rule) {

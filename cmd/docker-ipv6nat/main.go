@@ -76,7 +76,7 @@ func run() error {
 		return err
 	}
 
-	state, err := dockeripv6nat.NewState()
+	state, err := dockeripv6nat.NewState(debug)
 	if err != nil {
 		return err
 	}

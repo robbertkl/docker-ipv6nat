@@ -37,13 +37,13 @@ type manager struct {
 	hairpinMode bool
 }
 
-func NewManager() (*manager, error) {
+func NewManager(debug bool) (*manager, error) {
 	hairpinMode, err := detectHairpinMode()
 	if err != nil {
 		return nil, err
 	}
 
-	fw, err := NewFirewall()
+	fw, err := NewFirewall(debug)
 	if err != nil {
 		return nil, err
 	}
