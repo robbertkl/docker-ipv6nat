@@ -16,12 +16,12 @@ const (
 type Chain string
 
 const (
-	ChainInput           = "INPUT"
-	ChainOutput          = "OUTPUT"
-	ChainPrerouting      = "PREROUTING"
-	ChainPostrouting     = "POSTROUTING"
-	ChainForward         = "FORWARD"
-	ChainDocker          = "DOCKER"
+	ChainInput            = "INPUT"
+	ChainOutput           = "OUTPUT"
+	ChainPrerouting       = "PREROUTING"
+	ChainPostrouting      = "POSTROUTING"
+	ChainForward          = "FORWARD"
+	ChainDocker           = "DOCKER"
 	ChainDockerIsolation1 = "DOCKER-ISOLATION-STAGE-1"
 	ChainDockerIsolation2 = "DOCKER-ISOLATION-STAGE-2"
 )
