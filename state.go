@@ -80,17 +80,7 @@ func (s *state) UpdateNetwork(id string, network *docker.Network) error {
 
 	if newNetwork == nil {
 		delete(s.networks, id)
-		if oldNetwork != nil {
-			if err := s.manager.RemoveInterconnectionRules(oldNetwork, s.getKnownNetworks()); err != nil {
-				return err
-			}
-		}
 	} else {
-		if oldNetwork == nil {
-			if err := s.manager.EnsureInterconnectionRules(newNetwork, s.getKnownNetworks()); err != nil {
-				return err
-			}
-		}
 		s.networks[id] = newNetwork
 	}
 

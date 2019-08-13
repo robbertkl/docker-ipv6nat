@@ -22,7 +22,8 @@ const (
 	ChainPostrouting     = "POSTROUTING"
 	ChainForward         = "FORWARD"
 	ChainDocker          = "DOCKER"
-	ChainDockerIsolation = "DOCKER-ISOLATION"
+	ChainDockerIsolation1 = "DOCKER-ISOLATION-STAGE-1"
+	ChainDockerIsolation2 = "DOCKER-ISOLATION-STAGE-2"
 )
 
 type TableChain struct {
