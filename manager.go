@@ -176,14 +176,17 @@ func getRulesForNetwork(network *managedNetwork, hairpinMode bool) *Ruleset {
 
 	if network.internal {
 		return &Ruleset{
+			// internal: drop traffic to docker network from foreign subnet
 			NewPrependRule(TableFilter, ChainDockerIsolation1,
 				"!", "-s", network.subnet.String(),
 				"-o", network.bridge,
 				"-j", "DROP"),
+			// internal: drop traffic from docker network to foreign subnet
 			NewPrependRule(TableFilter, ChainDockerIsolation1,
 				"!", "-d", network.subnet.String(),
 				"-i", network.bridge,
 				"-j", "DROP"),
+			// ICC
 			NewRule(TableFilter, ChainForward,
 				"-i", network.bridge,
 				"-o", network.bridge,
@@ -192,25 +195,31 @@ func getRulesForNetwork(network *managedNetwork, hairpinMode bool) *Ruleset {
 	}
 
 	rs := Ruleset{
+		// not internal: catch if packet wants to leave docker network (stage 1)
 		NewPrependRule(TableFilter, ChainDockerIsolation1,
 			"-i", network.bridge,
 			"!", "-o", network.bridge,
 			"-j", ChainDockerIsolation2),
+		// not internal: if packet wants to enter another docker network, drop it (stage 2)
 		NewPrependRule(TableFilter, ChainDockerIsolation2,
 			"-o", network.bridge,
 			"-j", "DROP"),
+		// not internal: check ingoing traffic to docker network for new connections in additional chain
 		NewRule(TableFilter, ChainForward,
 			"-o", network.bridge,
 			"-j", ChainDocker),
+		// not internal: allow ingoing traffic to docker network for established connections
 		NewRule(TableFilter, ChainForward,
 			"-o", network.bridge,
 			"-m", "conntrack",
 			"--ctstate", "RELATED,ESTABLISHED",
 			"-j", "ACCEPT"),
+		// not internal: allow outgoing traffic from docker network
 		NewRule(TableFilter, ChainForward,
 			"-i", network.bridge,
 			"!", "-o", network.bridge,
 			"-j", "ACCEPT"),
+		// ICC
 		NewRule(TableFilter, ChainForward,
 			"-i", network.bridge,
 			"-o", network.bridge,
