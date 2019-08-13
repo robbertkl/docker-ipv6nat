@@ -48,6 +48,10 @@ func NewManager() (*manager, error) {
 		return nil, err
 	}
 
+	if err := fw.EnsureUserFilterChain(); err != nil {
+		return nil, err
+	}
+
 	if err := fw.EnsureTableChains(getCustomTableChains()); err != nil {
 		return nil, err
 	}
@@ -157,6 +161,8 @@ func getBaseRules(hairpinMode bool) *Ruleset {
 	}
 
 	return &Ruleset{
+		NewPrependRule(TableFilter, ChainForward,
+			"-j", ChainDockerUser),
 		NewPrependRule(TableFilter, ChainForward,
 			"-j", ChainDockerIsolation),
 		NewRule(TableFilter, ChainDockerIsolation,
