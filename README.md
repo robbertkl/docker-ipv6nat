@@ -158,6 +158,8 @@ net.ipv6.conf.default.forwarding = 1
 
 The special value of 2 will allow accepting router advertisements even if forwarding is enabled.
 
+Setting the `-debug` flag for docker-ipv6nat will log all ruleset changes to stdout so you can check your logs how docker-ipv6nat is modifing your ip6tables rulesets.
+
 ## Authors
 
 * Robbert Klarenbeek, <robbertkl@renbeek.nl>
