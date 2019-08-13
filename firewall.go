@@ -1,6 +1,7 @@
 package dockeripv6nat
 
 import (
+	"log"
 	"strings"
 
 	"github.com/coreos/go-iptables/iptables"
@@ -168,6 +169,9 @@ func (fw *firewall) EnsureRules(rules *Ruleset) error {
 			if err := fw.ipt.Insert(string(rule.tc.table), string(rule.tc.chain), len(fw.activeRules[rule.tc])+1, rule.spec...); err != nil {
 				return err
 			}
+			if fw.debug {
+				log.Println("rule added: -t", string(rule.tc.table), "-A", string(rule.tc.chain), len(fw.activeRules[rule.tc])+1, strings.Join(rule.spec, " "))
+			}
 		}
 		fw.activateRule(rule)
 	}
@@ -188,6 +192,9 @@ func (fw *firewall) EnsureRules(rules *Ruleset) error {
 			if err := fw.ipt.Insert(string(rule.tc.table), string(rule.tc.chain), 1, rule.spec...); err != nil {
 				return err
 			}
+			if fw.debug {
+				log.Println("rule added: -t", string(rule.tc.table), "-A", string(rule.tc.chain), 1, strings.Join(rule.spec, " "))
+			}
 		}
 		fw.activateRule(rule)
 	}
@@ -206,6 +213,9 @@ func (fw *firewall) RemoveRules(rules *Ruleset) error {
 		if exists {
 			if err := fw.ipt.Delete(string(rule.tc.table), string(rule.tc.chain), rule.spec...); err != nil {
 				return err
+			}
+			if fw.debug {
+				log.Println("rule removed: -t", string(rule.tc.table), "-D", string(rule.tc.chain), strings.Join(rule.spec, " "))
 			}
 		}
 		fw.deactivateRule(rule)
