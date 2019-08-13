@@ -56,6 +56,8 @@ Still think IPv6 NAT is a bad idea? That's fine, you're absolutely free to NOT u
 
 ## Usage
 
+### Docker Container
+
 The recommended way is to run the Docker image:
 
 ```
@@ -66,7 +68,25 @@ The flags `--privileged` and `--net=host` are necessary because docker-ipv6nat m
 
 To limit runtime privileges as a security precaution, the `--privileged` flag can be replaced with `--cap-add=NET_ADMIN --cap-add=SYS_MODULE`.
 
-If you're a security fan (it's not bad), you can drop all capabilities `--cap-drop=ALL` and leave only `--cap-add=NET_RAW --cap-add=NET_ADMIN --cap-add=SYS_MODULE`. About it you can read in a good [article](https://www.redhat.com/en/blog/secure-your-containers-one-weird-trick) from RedHat.
+If you're a security fan (it's not bad), you can drop all capabilities `--cap-drop=ALL` and leave only `--cap-add=NET_RAW --cap-add=NET_ADMIN --cap-add=SYS_MODULE`.
+About it you can read in a good [article](https://www.redhat.com/en/blog/secure-your-containers-one-weird-trick) from RedHat.
+
+### AUR Package
+
+If you are running ArchLinux, you can install the latest version by getting the package from the [AUR](https://aur.archlinux.org/packages/docker-ipv6nat/).
+
+```bash
+trizen -S docker-ipv6nat
+```
+
+For running docker-ipv6nat on system starup, you can simply enable (and start) the systemd service:
+
+```bash
+systemctl enable docker-ipv6nat.service
+systemctl start docker-ipv6nat.service
+```
+
+### Standalone Binary
 
 Alternatively, you can download the latest release from the [release page](https://github.com/robbertkl/docker-ipv6nat/releases) and run it directly on your host.
 See `docker-ipv6nat --help` for usage flags.
