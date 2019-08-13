@@ -17,6 +17,7 @@ var (
 	retry         bool
 	userlandProxy bool
 	version       bool
+	debug         bool
 )
 
 func usage() {
@@ -41,6 +42,7 @@ func initFlags() {
 	flag.BoolVar(&cleanup, "cleanup", false, "remove rules when shutting down")
 	flag.BoolVar(&retry, "retry", false, "keep retrying to reconnect after a disconnect")
 	flag.BoolVar(&version, "version", false, "show version")
+	flag.BoolVar(&debug, "debug", false, "log ruleset changes to stdout")
 
 	flag.Usage = usage
 	flag.Parse()
@@ -65,6 +67,10 @@ func main() {
 }
 
 func run() error {
+	if debug {
+		log.Println("docker-ipv6nat is running in debug mode")
+	}
+
 	client, err := docker.NewClientFromEnv()
 	if err != nil {
 		return err
