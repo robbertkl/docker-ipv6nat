@@ -216,10 +216,19 @@ func getRulesForNetwork(network *managedNetwork, hairpinMode bool) *Ruleset {
 	}
 
 	if network.masquerade {
-		rs = append(rs, NewPrependRule(TableNat, ChainPostrouting,
-			"-s", network.subnet.String(),
-			"!", "-o", network.bridge,
-			"-j", "MASQUERADE"))
+		rs = append(rs,
+			// masquerade packets if they enter the docker network
+			NewPrependRule(TableNat, ChainPostrouting,
+				"-o", network.bridge,
+				"-m", "addrtype",
+				"--dst-type", "LOCAL",
+				"-j", "MASQUERADE"),
+			// masquerade packets if they leave the docker network
+			NewPrependRule(TableNat, ChainPostrouting,
+				"-s", network.subnet.String(),
+				"!", "-o", network.bridge,
+				"-j", "MASQUERADE"),
+		)
 	}
 
 	if !hairpinMode {
