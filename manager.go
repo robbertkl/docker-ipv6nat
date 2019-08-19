@@ -177,13 +177,15 @@ func getRulesForNetwork(network *managedNetwork, hairpinMode bool) *Ruleset {
 	if network.internal {
 		return &Ruleset{
 			// internal: drop traffic to docker network from foreign subnet
+			// notice: rule is different from IPv4 counterpart because NDP should not be blocked
 			NewPrependRule(TableFilter, ChainDockerIsolation1,
-				"!", "-s", network.subnet.String(),
+				"!", "-i", network.bridge,
 				"-o", network.bridge,
 				"-j", "DROP"),
 			// internal: drop traffic from docker network to foreign subnet
+			// notice: rule is different from IPv4 counterpart because NDP should not be blocked
 			NewPrependRule(TableFilter, ChainDockerIsolation1,
-				"!", "-d", network.subnet.String(),
+				"!", "-o", network.bridge,
 				"-i", network.bridge,
 				"-j", "DROP"),
 			// ICC
