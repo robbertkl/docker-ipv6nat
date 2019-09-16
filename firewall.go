@@ -17,13 +17,14 @@ const (
 type Chain string
 
 const (
-	ChainInput           = "INPUT"
-	ChainOutput          = "OUTPUT"
-	ChainPrerouting      = "PREROUTING"
-	ChainPostrouting     = "POSTROUTING"
-	ChainForward         = "FORWARD"
-	ChainDocker          = "DOCKER"
-	ChainDockerIsolation = "DOCKER-ISOLATION"
+	ChainInput            = "INPUT"
+	ChainOutput           = "OUTPUT"
+	ChainPrerouting       = "PREROUTING"
+	ChainPostrouting      = "POSTROUTING"
+	ChainForward          = "FORWARD"
+	ChainDocker           = "DOCKER"
+	ChainDockerIsolation1 = "DOCKER-ISOLATION-STAGE-1"
+	ChainDockerIsolation2 = "DOCKER-ISOLATION-STAGE-2"
 )
 
 type TableChain struct {
