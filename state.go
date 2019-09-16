@@ -20,8 +20,8 @@ var ulaCIDR = net.IPNet{
 	Mask: net.CIDRMask(7, 128),
 }
 
-func NewState() (*state, error) {
-	manager, err := NewManager()
+func NewState(debug bool) (*state, error) {
+	manager, err := NewManager(debug)
 	if err != nil {
 		return nil, err
 	}

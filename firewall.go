@@ -1,6 +1,7 @@
 package dockeripv6nat
 
 import (
+	"log"
 	"strings"
 
 	"github.com/coreos/go-iptables/iptables"
@@ -104,15 +105,20 @@ func (s1 *Ruleset) Diff(s2 *Ruleset) *Ruleset {
 type firewall struct {
 	ipt         *iptables.IPTables
 	activeRules map[TableChain]map[string]bool
+	debug       bool
 }
 
-func NewFirewall() (*firewall, error) {
+func NewFirewall(debug bool) (*firewall, error) {
 	ipt, err := iptables.NewWithProtocol(iptables.ProtocolIPv6)
 	if err != nil {
 		return nil, err
 	}
 
-	return &firewall{ipt: ipt, activeRules: make(map[TableChain]map[string]bool)}, nil
+	return &firewall{
+		ipt:         ipt,
+		activeRules: make(map[TableChain]map[string]bool),
+		debug:       debug,
+	}, nil
 }
 
 func (fw *firewall) activateRule(r *rule) {
@@ -163,6 +169,9 @@ func (fw *firewall) EnsureRules(rules *Ruleset) error {
 			if err := fw.ipt.Insert(string(rule.tc.table), string(rule.tc.chain), len(fw.activeRules[rule.tc])+1, rule.spec...); err != nil {
 				return err
 			}
+			if fw.debug {
+				log.Println("rule added: -t", string(rule.tc.table), "-A", string(rule.tc.chain), len(fw.activeRules[rule.tc])+1, strings.Join(rule.spec, " "))
+			}
 		}
 		fw.activateRule(rule)
 	}
@@ -183,6 +192,9 @@ func (fw *firewall) EnsureRules(rules *Ruleset) error {
 			if err := fw.ipt.Insert(string(rule.tc.table), string(rule.tc.chain), 1, rule.spec...); err != nil {
 				return err
 			}
+			if fw.debug {
+				log.Println("rule added: -t", string(rule.tc.table), "-A", string(rule.tc.chain), 1, strings.Join(rule.spec, " "))
+			}
 		}
 		fw.activateRule(rule)
 	}
@@ -201,6 +213,9 @@ func (fw *firewall) RemoveRules(rules *Ruleset) error {
 		if exists {
 			if err := fw.ipt.Delete(string(rule.tc.table), string(rule.tc.chain), rule.spec...); err != nil {
 				return err
+			}
+			if fw.debug {
+				log.Println("rule removed: -t", string(rule.tc.table), "-D", string(rule.tc.chain), strings.Join(rule.spec, " "))
 			}
 		}
 		fw.deactivateRule(rule)
