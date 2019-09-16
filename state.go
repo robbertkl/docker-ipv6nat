@@ -20,8 +20,8 @@ var ulaCIDR = net.IPNet{
 	Mask: net.CIDRMask(7, 128),
 }
 
-func NewState() (*state, error) {
-	manager, err := NewManager()
+func NewState(debug bool) (*state, error) {
+	manager, err := NewManager(debug)
 	if err != nil {
 		return nil, err
 	}
@@ -80,17 +80,7 @@ func (s *state) UpdateNetwork(id string, network *docker.Network) error {
 
 	if newNetwork == nil {
 		delete(s.networks, id)
-		if oldNetwork != nil {
-			if err := s.manager.RemoveInterconnectionRules(oldNetwork, s.getKnownNetworks()); err != nil {
-				return err
-			}
-		}
 	} else {
-		if oldNetwork == nil {
-			if err := s.manager.EnsureInterconnectionRules(newNetwork, s.getKnownNetworks()); err != nil {
-				return err
-			}
-		}
 		s.networks[id] = newNetwork
 	}
 

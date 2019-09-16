@@ -37,13 +37,13 @@ type manager struct {
 	hairpinMode bool
 }
 
-func NewManager() (*manager, error) {
+func NewManager(debug bool) (*manager, error) {
 	hairpinMode, err := detectHairpinMode()
 	if err != nil {
 		return nil, err
 	}
 
-	fw, err := NewFirewall()
+	fw, err := NewFirewall(debug)
 	if err != nil {
 		return nil, err
 	}
@@ -120,14 +120,6 @@ func (m *manager) ReplaceContainer(oldContainer, newContainer *managedContainer)
 	return m.applyRules(getRulesForContainer(oldContainer, m.hairpinMode), getRulesForContainer(newContainer, m.hairpinMode))
 }
 
-func (m *manager) EnsureInterconnectionRules(network *managedNetwork, otherNetworks []*managedNetwork) error {
-	return m.fw.EnsureRules(getInterconnectionRules(network, otherNetworks))
-}
-
-func (m *manager) RemoveInterconnectionRules(network *managedNetwork, otherNetworks []*managedNetwork) error {
-	return m.fw.RemoveRules(getInterconnectionRules(network, otherNetworks))
-}
-
 func (m *manager) applyRules(oldRules, newRules *Ruleset) error {
 	oldRules = oldRules.Diff(newRules)
 
@@ -145,7 +137,8 @@ func (m *manager) applyRules(oldRules, newRules *Ruleset) error {
 func getCustomTableChains() []TableChain {
 	return []TableChain{
 		{TableFilter, ChainDocker},
-		{TableFilter, ChainDockerIsolation},
+		{TableFilter, ChainDockerIsolation1},
+		{TableFilter, ChainDockerIsolation2},
 		{TableNat, ChainDocker},
 	}
 }
@@ -164,8 +157,10 @@ func getBaseRules(hairpinMode bool) *Ruleset {
 		NewPrependRule(TableFilter, ChainForward,
 			"-j", ChainDockerUser),
 		NewPrependRule(TableFilter, ChainForward,
-			"-j", ChainDockerIsolation),
-		NewRule(TableFilter, ChainDockerIsolation,
+			"-j", ChainDockerIsolation1),
+		NewRule(TableFilter, ChainDockerIsolation1,
+			"-j", "RETURN"),
+		NewRule(TableFilter, ChainDockerIsolation2,
 			"-j", "RETURN"),
 		NewRule(TableNat, ChainPrerouting,
 			"-m", "addrtype",
@@ -187,14 +182,19 @@ func getRulesForNetwork(network *managedNetwork, hairpinMode bool) *Ruleset {
 
 	if network.internal {
 		return &Ruleset{
-			NewPrependRule(TableFilter, ChainDockerIsolation,
-				"!", "-s", network.subnet.String(),
+			// internal: drop traffic to docker network from foreign subnet
+			// notice: rule is different from IPv4 counterpart because NDP should not be blocked
+			NewPrependRule(TableFilter, ChainDockerIsolation1,
+				"!", "-i", network.bridge,
 				"-o", network.bridge,
 				"-j", "DROP"),
-			NewPrependRule(TableFilter, ChainDockerIsolation,
-				"!", "-d", network.subnet.String(),
+			// internal: drop traffic from docker network to foreign subnet
+			// notice: rule is different from IPv4 counterpart because NDP should not be blocked
+			NewPrependRule(TableFilter, ChainDockerIsolation1,
+				"!", "-o", network.bridge,
 				"-i", network.bridge,
 				"-j", "DROP"),
+			// ICC
 			NewRule(TableFilter, ChainForward,
 				"-i", network.bridge,
 				"-o", network.bridge,
@@ -203,29 +203,51 @@ func getRulesForNetwork(network *managedNetwork, hairpinMode bool) *Ruleset {
 	}
 
 	rs := Ruleset{
+		// not internal: catch if packet wants to leave docker network (stage 1)
+		NewPrependRule(TableFilter, ChainDockerIsolation1,
+			"-i", network.bridge,
+			"!", "-o", network.bridge,
+			"-j", ChainDockerIsolation2),
+		// not internal: if packet wants to enter another docker network, drop it (stage 2)
+		NewPrependRule(TableFilter, ChainDockerIsolation2,
+			"-o", network.bridge,
+			"-j", "DROP"),
+		// not internal: check ingoing traffic to docker network for new connections in additional chain
 		NewRule(TableFilter, ChainForward,
 			"-o", network.bridge,
 			"-j", ChainDocker),
+		// not internal: allow ingoing traffic to docker network for established connections
 		NewRule(TableFilter, ChainForward,
 			"-o", network.bridge,
 			"-m", "conntrack",
 			"--ctstate", "RELATED,ESTABLISHED",
 			"-j", "ACCEPT"),
+		// not internal: allow outgoing traffic from docker network
 		NewRule(TableFilter, ChainForward,
 			"-i", network.bridge,
 			"!", "-o", network.bridge,
 			"-j", "ACCEPT"),
+		// ICC
 		NewRule(TableFilter, ChainForward,
 			"-i", network.bridge,
 			"-o", network.bridge,
 			"-j", iccAction),
+		// masquerade packets if they enter the docker network
+		NewPrependRule(TableNat, ChainPostrouting,
+			"-o", network.bridge,
+			"-m", "addrtype",
+			"--dst-type", "LOCAL",
+			"-j", "MASQUERADE"),
 	}
 
 	if network.masquerade {
-		rs = append(rs, NewPrependRule(TableNat, ChainPostrouting,
-			"-s", network.subnet.String(),
-			"!", "-o", network.bridge,
-			"-j", "MASQUERADE"))
+		rs = append(rs,
+			// masquerade packets if they leave the docker network
+			NewPrependRule(TableNat, ChainPostrouting,
+				"-s", network.subnet.String(),
+				"!", "-o", network.bridge,
+				"-j", "MASQUERADE"),
+		)
 	}
 
 	if !hairpinMode {
@@ -288,32 +310,4 @@ func getRulesForPort(port *managedPort, container *managedContainer, hairpinMode
 			"-j", "MASQUERADE"),
 		dnatRule,
 	}
-}
-
-func getInterconnectionRules(network *managedNetwork, otherNetworks []*managedNetwork) *Ruleset {
-	if network.internal {
-		return &Ruleset{}
-	}
-
-	rs := make(Ruleset, 0, len(otherNetworks)*2)
-	for _, otherNetwork := range otherNetworks {
-		if otherNetwork.id == network.id {
-			continue
-		}
-
-		if otherNetwork.internal {
-			continue
-		}
-
-		rs = append(rs, NewPrependRule(TableFilter, ChainDockerIsolation,
-			"-i", network.bridge,
-			"-o", otherNetwork.bridge,
-			"-j", "DROP"))
-		rs = append(rs, NewPrependRule(TableFilter, ChainDockerIsolation,
-			"-i", otherNetwork.bridge,
-			"-o", network.bridge,
-			"-j", "DROP"))
-	}
-
-	return &rs
 }
