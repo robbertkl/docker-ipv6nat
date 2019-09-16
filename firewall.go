@@ -22,6 +22,7 @@ const (
 	ChainPrerouting       = "PREROUTING"
 	ChainPostrouting      = "POSTROUTING"
 	ChainForward          = "FORWARD"
+	ChainDockerUser       = "DOCKER-USER"
 	ChainDocker           = "DOCKER"
 	ChainDockerIsolation1 = "DOCKER-ISOLATION-STAGE-1"
 	ChainDockerIsolation2 = "DOCKER-ISOLATION-STAGE-2"
@@ -104,9 +105,10 @@ func (s1 *Ruleset) Diff(s2 *Ruleset) *Ruleset {
 }
 
 type firewall struct {
-	ipt         *iptables.IPTables
-	activeRules map[TableChain]map[string]bool
-	debug       bool
+	ipt               *iptables.IPTables
+	activeRules       map[TableChain]map[string]bool
+	debug             bool
+	userChainJumpRule *rule
 }
 
 func NewFirewall(debug bool) (*firewall, error) {
@@ -116,9 +118,10 @@ func NewFirewall(debug bool) (*firewall, error) {
 	}
 
 	return &firewall{
-		ipt:         ipt,
-		activeRules: make(map[TableChain]map[string]bool),
-		debug:       debug,
+		ipt:               ipt,
+		activeRules:       make(map[TableChain]map[string]bool),
+		debug:             debug,
+		userChainJumpRule: NewRule(TableFilter, ChainForward, "-j", ChainDockerUser),
 	}, nil
 }
 
@@ -205,6 +208,9 @@ func (fw *firewall) EnsureRules(rules *Ruleset) error {
 
 func (fw *firewall) RemoveRules(rules *Ruleset) error {
 	for _, rule := range *rules {
+		if rule.Equal(fw.userChainJumpRule) {
+			continue
+		}
 
 		exists, err := fw.ipt.Exists(string(rule.tc.table), string(rule.tc.chain), rule.spec...)
 		if err != nil {
@@ -223,4 +229,38 @@ func (fw *firewall) RemoveRules(rules *Ruleset) error {
 	}
 
 	return nil
+}
+
+func (fw *firewall) EnsureUserFilterChain() error {
+	chains, err := fw.ipt.ListChains(TableFilter)
+	if err != nil {
+		return err
+	}
+
+	exists := false
+	for _, chain := range chains {
+		if chain == ChainDockerUser {
+			exists = true
+		}
+	}
+
+	if !exists {
+		if err = fw.ipt.NewChain(TableFilter, ChainDockerUser); err != nil {
+			return err
+		}
+	}
+
+	if err = fw.ipt.AppendUnique(TableFilter, ChainDockerUser, "-j", "RETURN"); err != nil {
+		return err
+	}
+
+	exists, err = fw.ipt.Exists(TableFilter, ChainForward, "-j", ChainDockerUser)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		err = fw.ipt.Delete(TableFilter, ChainForward, "-j", ChainDockerUser)
+	}
+	return err
 }
