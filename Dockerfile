@@ -11,7 +11,7 @@ ENV CGO_ENABLED=0
 RUN env $(cat .env | xargs) go build -o /docker-ipv6nat -ldflags "-X main.buildVersion=$VERSION" ./cmd/docker-ipv6nat
 
 FROM alpine:3.10 AS release
-RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/main ip6tables
+RUN apk add --no-cache ip6tables
 COPY --from=build /docker-ipv6nat /
 COPY docker-ipv6nat-compat /
 ENTRYPOINT ["/docker-ipv6nat-compat"]
