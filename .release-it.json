@@ -1,5 +1,6 @@
 {
   "hooks": {
+    "before:bump": "sed -E -i '' 's/^const buildVersion = .*$/const buildVersion = \"${version}\"/' cmd/docker-ipv6nat/main.go",
     "after:bump": "./push.sh ${version}",
     "after:release": "rm -Rf dist/"
   },

@@ -10,9 +10,9 @@ import (
 	"github.com/robbertkl/docker-ipv6nat"
 )
 
-var (
-	buildVersion string
+const buildVersion = "0.3.8"
 
+var (
 	cleanup       bool
 	retry         bool
 	userlandProxy bool
