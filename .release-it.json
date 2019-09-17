@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "after:bump": "./push.sh ${version}",
+    "after:release": "rm -Rf dist/"
+  },
+  "git": {
+    "commitMessage": "Release v${version}",
+    "tagName": "v${version}",
+    "tagAnnotation": "docker-ipv6nat v${version}"
+  },
+  "github": {
+    "release": true,
+    "releaseName": "${version}",
+    "assets": [ "dist/*" ]
+  }
+}
