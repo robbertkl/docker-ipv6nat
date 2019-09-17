@@ -164,6 +164,10 @@ Setting the `-debug` flag for docker-ipv6nat will log all ruleset changes to std
 
 * Robbert Klarenbeek, <robbertkl@renbeek.nl>
 
+Big thanks to all GitHub contributors for testing, reporting issues and PRs!
+
+Special thanks to Elias Werberich [@bephinix](https://github.com/bephinix) for his many contributions, mainly keeping up with recent docker / libnetwork changes and porting them to docker-ipv6nat!
+
 ## License
 
 This repo is published under the [MIT License](http://www.opensource.org/licenses/mit-license.php).
