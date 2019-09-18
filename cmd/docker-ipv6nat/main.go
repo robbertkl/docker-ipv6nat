@@ -10,7 +10,7 @@ import (
 	"github.com/robbertkl/docker-ipv6nat"
 )
 
-const buildVersion = "0.3.8"
+const buildVersion = "0.4.0"
 
 var (
 	cleanup       bool
