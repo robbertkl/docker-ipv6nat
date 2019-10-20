@@ -10,11 +10,8 @@ then
     exit 1
 fi
 
-DOCKER_TLS_VERIFY=
-DOCKER_HOST=
-DOCKER_CERT_PATH=
-DOCKER_MACHINE_NAME=
-DOCKER_VERSION="system"
+export DOCKER_HOST=
+export DOCKER_CONTEXT=default
 
 cd `dirname "${0}"`
 
