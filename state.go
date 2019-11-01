@@ -8,8 +8,9 @@ import (
 	"github.com/fsouza/go-dockerclient"
 )
 
-type state struct {
-	manager    *manager
+// State keeps track of the current Docker containers and networks to apply relative updates to the manager
+type State struct {
+	manager    *Manager
 	networks   map[string]*managedNetwork
 	containers map[string]*managedContainer
 }
@@ -20,20 +21,22 @@ var ulaCIDR = net.IPNet{
 	Mask: net.CIDRMask(7, 128),
 }
 
-func NewState(debug bool) (*state, error) {
+// NewState constructs a new state
+func NewState(debug bool) (*State, error) {
 	manager, err := NewManager(debug)
 	if err != nil {
 		return nil, err
 	}
 
-	return &state{
+	return &State{
 		manager:    manager,
 		networks:   make(map[string]*managedNetwork),
 		containers: make(map[string]*managedContainer),
 	}, nil
 }
 
-func (s *state) Cleanup() error {
+// Cleanup resets the state
+func (s *State) Cleanup() error {
 	s.RemoveMissingContainers([]string{})
 	s.RemoveMissingNetworks([]string{})
 
@@ -44,7 +47,8 @@ func (s *state) Cleanup() error {
 	return nil
 }
 
-func (s *state) RemoveMissingNetworks(networkIDs []string) error {
+// RemoveMissingNetworks removes any of the given networks, if they don't exist
+func (s *State) RemoveMissingNetworks(networkIDs []string) error {
 	for id := range s.networks {
 		if !contains(networkIDs, id) {
 			if err := s.UpdateNetwork(id, nil); err != nil {
@@ -56,7 +60,8 @@ func (s *state) RemoveMissingNetworks(networkIDs []string) error {
 	return nil
 }
 
-func (s *state) RemoveMissingContainers(containerIDs []string) error {
+// RemoveMissingContainers removes any of the given containers if they don't exist
+func (s *State) RemoveMissingContainers(containerIDs []string) error {
 	for id := range s.containers {
 		if !contains(containerIDs, id) {
 			if err := s.UpdateContainer(id, nil); err != nil {
@@ -68,7 +73,8 @@ func (s *state) RemoveMissingContainers(containerIDs []string) error {
 	return nil
 }
 
-func (s *state) UpdateNetwork(id string, network *docker.Network) error {
+// UpdateNetwork applies a network, which can add, remove or update it
+func (s *State) UpdateNetwork(id string, network *docker.Network) error {
 	oldNetwork := s.networks[id]
 	newNetwork := s.parseNetwork(network)
 
@@ -87,7 +93,8 @@ func (s *state) UpdateNetwork(id string, network *docker.Network) error {
 	return nil
 }
 
-func (s *state) UpdateContainer(id string, container *docker.Container) error {
+// UpdateContainer applies a container, which can add, remove or update it
+func (s *State) UpdateContainer(id string, container *docker.Container) error {
 	oldContainer := s.containers[id]
 	newContainer := s.parseContainer(container)
 
@@ -106,7 +113,7 @@ func (s *state) UpdateContainer(id string, container *docker.Container) error {
 	return nil
 }
 
-func (s *state) parseNetwork(network *docker.Network) *managedNetwork {
+func (s *State) parseNetwork(network *docker.Network) *managedNetwork {
 	if network == nil {
 		return nil
 	}
@@ -172,7 +179,7 @@ func (s *state) parseNetwork(network *docker.Network) *managedNetwork {
 	return &n
 }
 
-func (s *state) findFirstKnownNetwork(networks map[string]docker.ContainerNetwork) (*managedNetwork, net.IP) {
+func (s *State) findFirstKnownNetwork(networks map[string]docker.ContainerNetwork) (*managedNetwork, net.IP) {
 	for _, network := range networks {
 		ip := net.ParseIP(network.GlobalIPv6Address)
 		if !ulaCIDR.Contains(ip) {
@@ -190,7 +197,7 @@ func (s *state) findFirstKnownNetwork(networks map[string]docker.ContainerNetwor
 	return nil, nil
 }
 
-func (s *state) getKnownNetworks() []*managedNetwork {
+func (s *State) getKnownNetworks() []*managedNetwork {
 	networks := make([]*managedNetwork, len(s.networks))
 	index := 0
 	for _, network := range s.networks {
@@ -201,7 +208,7 @@ func (s *state) getKnownNetworks() []*managedNetwork {
 	return networks
 }
 
-func (s *state) parseContainer(container *docker.Container) *managedContainer {
+func (s *State) parseContainer(container *docker.Container) *managedContainer {
 	if container == nil {
 		return nil
 	}

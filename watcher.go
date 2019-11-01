@@ -11,6 +11,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 )
 
+// RecoverableError wraps an error to signal the application does not need to crash
 type RecoverableError struct {
 	err error
 }
@@ -19,26 +20,29 @@ func (re *RecoverableError) Error() string {
 	return re.err.Error()
 }
 
-// Number of seconds to wait after connection failure.
+// retryInterval is the number of seconds to wait after connection failure
 const retryInterval = 10
 
-type watcher struct {
+// Watcher processes Docker events and applies them to the state
+type Watcher struct {
 	client        *docker.Client
-	state         *state
+	state         *State
 	eventChannel  chan *docker.APIEvents
 	signalChannel chan os.Signal
 	retry         bool
 }
 
-func NewWatcher(client *docker.Client, state *state, retry bool) *watcher {
-	return &watcher{
+// NewWatcher constructs a new watcher
+func NewWatcher(client *docker.Client, state *State, retry bool) *Watcher {
+	return &Watcher{
 		client: client,
 		state:  state,
 		retry:  retry,
 	}
 }
 
-func (w *watcher) Watch() error {
+// Watch starts watching for new Docker events to process
+func (w *Watcher) Watch() error {
 	w.signalChannel = make(chan os.Signal, 1)
 	signal.Notify(w.signalChannel, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL)
 	defer signal.Stop(w.signalChannel)
@@ -61,7 +65,7 @@ func (w *watcher) Watch() error {
 	return nil
 }
 
-func (w *watcher) attemptRecovery(err error) error {
+func (w *Watcher) attemptRecovery(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -78,7 +82,7 @@ func (w *watcher) attemptRecovery(err error) error {
 	return err
 }
 
-func (w *watcher) setupListener() error {
+func (w *Watcher) setupListener() error {
 	// Always try a ping first
 	if err := w.client.Ping(); err != nil {
 		return &RecoverableError{err}
@@ -96,7 +100,7 @@ func (w *watcher) setupListener() error {
 	return nil
 }
 
-func (w *watcher) processOnce() (bool, error) {
+func (w *Watcher) processOnce() (bool, error) {
 	select {
 	case <-time.After(retryInterval * time.Second):
 		if w.eventChannel != nil {
@@ -116,15 +120,14 @@ func (w *watcher) processOnce() (bool, error) {
 		if sig == syscall.SIGHUP {
 			// Return a RecoverableError so that a regenerate will be initiated.
 			return false, &RecoverableError{errors.New("received SIGHUP")}
-		} else {
-			return true, nil
 		}
+		return true, nil
 	}
 
 	return false, nil
 }
 
-func (w *watcher) regenerate() error {
+func (w *Watcher) regenerate() error {
 	networks, err := w.client.ListNetworks()
 	if err != nil {
 		return &RecoverableError{err}
@@ -170,7 +173,7 @@ func (w *watcher) regenerate() error {
 	return nil
 }
 
-func (w *watcher) handleEvent(event *docker.APIEvents) error {
+func (w *Watcher) handleEvent(event *docker.APIEvents) error {
 	if event.Type != "network" {
 		return nil
 	}

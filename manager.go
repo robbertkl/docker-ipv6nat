@@ -32,12 +32,14 @@ type managedPort struct {
 	hostPort    uint16
 }
 
-type manager struct {
-	fw          *firewall
+// Manager controls the firewall by managing rules for Docker networks and containers
+type Manager struct {
+	fw          *Firewall
 	hairpinMode bool
 }
 
-func NewManager(debug bool) (*manager, error) {
+// NewManager constructs a new Manager
+func NewManager(debug bool) (*Manager, error) {
 	hairpinMode, err := detectHairpinMode()
 	if err != nil {
 		return nil, err
@@ -60,7 +62,7 @@ func NewManager(debug bool) (*manager, error) {
 		return nil, err
 	}
 
-	return &manager{
+	return &Manager{
 		fw:          fw,
 		hairpinMode: hairpinMode,
 	}, nil
@@ -100,7 +102,8 @@ func detectHairpinMode() (bool, error) {
 	return false, errors.New("unable to detect hairpin mode (is the docker daemon running?)")
 }
 
-func (m *manager) Cleanup() error {
+// Cleanup removes the base rules and table-chains (per-network / per-container rules should already be removed)
+func (m *Manager) Cleanup() error {
 	if err := m.fw.RemoveRules(getBaseRules(m.hairpinMode)); err != nil {
 		return err
 	}
@@ -112,15 +115,17 @@ func (m *manager) Cleanup() error {
 	return nil
 }
 
-func (m *manager) ReplaceNetwork(oldNetwork, newNetwork *managedNetwork) error {
+// ReplaceNetwork applies relative rule changes for a network
+func (m *Manager) ReplaceNetwork(oldNetwork, newNetwork *managedNetwork) error {
 	return m.applyRules(getRulesForNetwork(oldNetwork, m.hairpinMode), getRulesForNetwork(newNetwork, m.hairpinMode))
 }
 
-func (m *manager) ReplaceContainer(oldContainer, newContainer *managedContainer) error {
+// ReplaceContainer applies relative rule changes for a container
+func (m *Manager) ReplaceContainer(oldContainer, newContainer *managedContainer) error {
 	return m.applyRules(getRulesForContainer(oldContainer, m.hairpinMode), getRulesForContainer(newContainer, m.hairpinMode))
 }
 
-func (m *manager) applyRules(oldRules, newRules *Ruleset) error {
+func (m *Manager) applyRules(oldRules, newRules *Ruleset) error {
 	oldRules = oldRules.Diff(newRules)
 
 	if err := m.fw.EnsureRules(newRules); err != nil {

@@ -7,15 +7,19 @@ import (
 	"github.com/coreos/go-iptables/iptables"
 )
 
+// Table describes an ip(6)tables table
 type Table string
 
+// All ip(6)tables tables we use
 const (
 	TableFilter = "filter"
 	TableNat    = "nat"
 )
 
+// Chain describes an ip(6)tables chain
 type Chain string
 
+// All ip(6)tables chains we use
 const (
 	ChainInput            = "INPUT"
 	ChainOutput           = "OUTPUT"
@@ -28,48 +32,53 @@ const (
 	ChainDockerIsolation2 = "DOCKER-ISOLATION-STAGE-2"
 )
 
+// TableChain references a combination of an ip(6)tables table and chain
 type TableChain struct {
 	table Table
 	chain Chain
 }
 
-type rule struct {
+// Rule represents a unique firewall rule
+type Rule struct {
 	tc      TableChain
 	spec    []string
 	prepend bool
 }
 
-func NewRule(table Table, chain Chain, spec ...string) *rule {
-	return &rule{
+// NewRule constructs a new (non prepended) Rule
+func NewRule(table Table, chain Chain, spec ...string) *Rule {
+	return &Rule{
 		tc:      TableChain{table, chain},
 		spec:    spec,
 		prepend: false,
 	}
 }
 
-func NewPrependRule(table Table, chain Chain, spec ...string) *rule {
-	return &rule{
+// NewPrependRule constructs a new Rule with prepend set to true
+func NewPrependRule(table Table, chain Chain, spec ...string) *Rule {
+	return &Rule{
 		tc:      TableChain{table, chain},
 		spec:    spec,
 		prepend: true,
 	}
 }
 
-func (r *rule) hash() string {
+func (r *Rule) hash() string {
 	return strings.Join(r.spec, "#")
 }
 
-func (r1 *rule) Equal(r2 *rule) bool {
-	if r1.tc != r2.tc {
+// Equal compares 2 Rules
+func (r *Rule) Equal(other *Rule) bool {
+	if r.tc != other.tc {
 		return false
 	}
 
-	if len(r1.spec) != len(r2.spec) {
+	if len(r.spec) != len(other.spec) {
 		return false
 	}
 
-	for index := range r1.spec {
-		if r1.spec[index] != r2.spec[index] {
+	for index := range r.spec {
+		if r.spec[index] != other.spec[index] {
 			return false
 		}
 	}
@@ -77,9 +86,11 @@ func (r1 *rule) Equal(r2 *rule) bool {
 	return true
 }
 
-type Ruleset []*rule
+// Ruleset contains a list of unique rules
+type Ruleset []*Rule
 
-func (s *Ruleset) Contains(r *rule) bool {
+// Contains checks if a Rule is part of the Ruleset
+func (s *Ruleset) Contains(r *Rule) bool {
 	for _, sr := range *s {
 		if r.Equal(sr) {
 			return true
@@ -89,35 +100,38 @@ func (s *Ruleset) Contains(r *rule) bool {
 	return false
 }
 
-func (s1 *Ruleset) Diff(s2 *Ruleset) *Ruleset {
-	if len(*s2) == 0 {
-		return s1
+// Diff returns a new Ruleset with only the rules that are not part of other
+func (s *Ruleset) Diff(other *Ruleset) *Ruleset {
+	if len(*other) == 0 {
+		return s
 	}
 
-	s := make(Ruleset, 0, len(*s1))
-	for _, r := range *s1 {
-		if !s2.Contains(r) {
-			s = append(s, r)
+	diffed := make(Ruleset, 0, len(*s))
+	for _, r := range *s {
+		if !other.Contains(r) {
+			diffed = append(diffed, r)
 		}
 	}
 
-	return &s
+	return &diffed
 }
 
-type firewall struct {
+// Firewall keeps track of the active rules, in order to perform proper appends/prepends
+type Firewall struct {
 	ipt               *iptables.IPTables
 	activeRules       map[TableChain]map[string]bool
 	debug             bool
-	userChainJumpRule *rule
+	userChainJumpRule *Rule
 }
 
-func NewFirewall(debug bool) (*firewall, error) {
+// NewFirewall constructs a new Firewall
+func NewFirewall(debug bool) (*Firewall, error) {
 	ipt, err := iptables.NewWithProtocol(iptables.ProtocolIPv6)
 	if err != nil {
 		return nil, err
 	}
 
-	return &firewall{
+	return &Firewall{
 		ipt:               ipt,
 		activeRules:       make(map[TableChain]map[string]bool),
 		debug:             debug,
@@ -125,18 +139,19 @@ func NewFirewall(debug bool) (*firewall, error) {
 	}, nil
 }
 
-func (fw *firewall) activateRule(r *rule) {
+func (fw *Firewall) activateRule(r *Rule) {
 	if _, exists := fw.activeRules[r.tc]; !exists {
 		fw.activeRules[r.tc] = make(map[string]bool)
 	}
 	fw.activeRules[r.tc][r.hash()] = true
 }
 
-func (fw *firewall) deactivateRule(r *rule) {
+func (fw *Firewall) deactivateRule(r *Rule) {
 	delete(fw.activeRules[r.tc], r.hash())
 }
 
-func (fw *firewall) EnsureTableChains(tableChains []TableChain) error {
+// EnsureTableChains creates (and clears!) the given TableChains
+func (fw *Firewall) EnsureTableChains(tableChains []TableChain) error {
 	for _, tc := range tableChains {
 		if err := fw.ipt.ClearChain(string(tc.table), string(tc.chain)); err != nil {
 			return err
@@ -147,7 +162,8 @@ func (fw *firewall) EnsureTableChains(tableChains []TableChain) error {
 	return nil
 }
 
-func (fw *firewall) RemoveTableChains(tableChains []TableChain) error {
+// RemoveTableChains deletes the given TableChains
+func (fw *Firewall) RemoveTableChains(tableChains []TableChain) error {
 	for _, tc := range tableChains {
 		fw.ipt.ClearChain(string(tc.table), string(tc.chain))
 		fw.ipt.DeleteChain(string(tc.table), string(tc.chain))
@@ -157,7 +173,8 @@ func (fw *firewall) RemoveTableChains(tableChains []TableChain) error {
 	return nil
 }
 
-func (fw *firewall) EnsureRules(rules *Ruleset) error {
+// EnsureRules makes sure the Rules in the given Ruleset exist or it creates them
+func (fw *Firewall) EnsureRules(rules *Ruleset) error {
 	// A regular loop to append only the non-prepend rules
 	for _, rule := range *rules {
 		if rule.prepend {
@@ -206,7 +223,8 @@ func (fw *firewall) EnsureRules(rules *Ruleset) error {
 	return nil
 }
 
-func (fw *firewall) RemoveRules(rules *Ruleset) error {
+// RemoveRules makes sure the Rules in the given Ruleset don't exist or removes them
+func (fw *Firewall) RemoveRules(rules *Ruleset) error {
 	for _, rule := range *rules {
 		if rule.Equal(fw.userChainJumpRule) {
 			continue
@@ -231,7 +249,8 @@ func (fw *firewall) RemoveRules(rules *Ruleset) error {
 	return nil
 }
 
-func (fw *firewall) EnsureUserFilterChain() error {
+// EnsureUserFilterChain makes sure the DOCKER-USER chain exists, without clearing it
+func (fw *Firewall) EnsureUserFilterChain() error {
 	chains, err := fw.ipt.ListChains(TableFilter)
 	if err != nil {
 		return err
