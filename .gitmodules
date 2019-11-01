@@ -7,12 +7,6 @@
 [submodule "vendor/github.com/fsouza/go-dockerclient"]
 	path = vendor/github.com/fsouza/go-dockerclient
 	url = https://github.com/fsouza/go-dockerclient
-[submodule "vendor/golang.org/x/sys"]
-	path = vendor/golang.org/x/sys
-	url = https://go.googlesource.com/sys
-[submodule "vendor/github.com/ijc/Gotty"]
-	path = vendor/github.com/ijc/Gotty
-	url = https://github.com/ijc/Gotty
 [submodule "vendor/github.com/coreos/go-iptables"]
 	path = vendor/github.com/coreos/go-iptables
 	url = https://github.com/coreos/go-iptables
