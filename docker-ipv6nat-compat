@@ -1,7 +1,7 @@
 #!/bin/sh
 
 BINARY="xtables-legacy-multi"
-if iptables-nft -L | grep -q "Chain DOCKER "
+if iptables-nft -L 2> /dev/null | grep -q "Chain DOCKER "
 then
   BINARY="xtables-nft-multi"
 fi
