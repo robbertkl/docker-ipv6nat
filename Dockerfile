@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.13.3-alpine3.10 AS build
+FROM --platform=$BUILDPLATFORM golang:1.13.4-alpine3.10 AS build
 ARG TARGETPLATFORM
 WORKDIR /go/src/github.com/robbertkl/docker-ipv6nat
 COPY . .
