@@ -61,15 +61,17 @@ Still think IPv6 NAT is a bad idea? That's fine, you're absolutely free to NOT u
 The recommended way is to run the Docker image:
 
 ```
-docker run -d --restart=always -v /var/run/docker.sock:/var/run/docker.sock:ro --privileged --net=host robbertkl/ipv6nat
+docker run -d --name ipv6nat --privileged --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock:ro -v /lib/modules:/lib/modules:ro robbertkl/ipv6nat
 ```
 
-The flags `--privileged` and `--net=host` are necessary because docker-ipv6nat manages the hosts IPv6 firewall using ip6tables.
+The flags `--privileged` and `--network host` are necessary because docker-ipv6nat manages the hosts IPv6 firewall using ip6tables.
 
-To limit runtime privileges as a security precaution, the `--privileged` flag can be replaced with `--cap-add=NET_ADMIN --cap-add=SYS_MODULE`.
+To limit runtime privileges as a security precaution, the `--privileged` flag can be replaced with `--cap-add NET_ADMIN --cap-add SYS_MODULE`.
 
-If you're a security fan (it's not bad), you can drop all capabilities `--cap-drop=ALL` and leave only `--cap-add=NET_RAW --cap-add=NET_ADMIN --cap-add=SYS_MODULE`.
+If you're a security fan (it's not bad), you can drop all capabilities `--cap-drop ALL` and leave only `--cap-add NET_ADMIN --cap-add NET_RAW --cap-add SYS_MODULE`.
 About it you can read in a good [article](https://www.redhat.com/en/blog/secure-your-containers-one-weird-trick) from RedHat.
+
+You may omit the `-v /lib/modules:/lib/modules:ro` bind mount and `--cap-add SYS_MODULE` if your distro already loaded `ip6_tables` kernel module on boot. If you have a systemd-based distro, you can ensure that on next boot by `echo ip6_tables >/etc/modules-load.d/ipv6nat.conf`, see [modules-load.d(5)](https://www.freedesktop.org/software/systemd/man/modules-load.d.html).
 
 ### AUR Package
 
@@ -105,10 +107,10 @@ To use IPv6, make sure your Docker daemon is started with `--ipv6` and specifies
 To try it out without messing with your Docker daemon flags, or if you're already using user-defined networks, you can create a IPv6-enabled network with:
 
 ```
-docker network create --ipv6 --subnet=fd00:dead:beef::/48 mynetwork
+docker network create --ipv6 --subnet fd00:dead:beef::/48 mynetwork
 ```
 
-Then start all of your other containers with `--net=mynetwork`. Please note the `robbertkl/ipv6nat` container still needs to run with `--net=host` to access the host firewall.
+Then start all of your other containers with `--network mynetwork`. Please note the `robbertkl/ipv6nat` container still needs to run with `--network host` to access the host firewall.
 
 Docker-ipv6nat respects all supported `com.docker.network.bridge.*` options (pass them with `-o`) and adds 1 additional option:
 
@@ -142,11 +144,7 @@ docker network create \
 
 ## Troubleshooting
 
-On some systems, IPv6 filter related kernel modules will not be loaded by default, and you'll see error messages in the log.
-Luckily, ip6tables will automatically load all necessary kernel modules for us, and it will even do so from within the container, since we're a privileged container anyway!
-To accommodate this, we need to mount the modules so ip6tables can load them: just add `-v /lib/modules:/lib/modules:ro` to the above docker run command.
-
-Also, if you can see the added ip6tables rules, but it's still not working, it might be that forwarding is not enabled for IPv6.
+If you can see the added ip6tables rules, but it's still not working, it might be that forwarding is not enabled for IPv6.
 This is usually the case if you're using router advertisements (e.g. having `net.ipv6.conf.eth0.accept_ra=1`).
 Enabling forwarding in such a case will break router advertisements. To overcome this, use the following in your `/etc/sysctl.conf`:
 
