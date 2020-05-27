@@ -191,7 +191,7 @@ func (fw *Firewall) EnsureRules(rules *Ruleset) error {
 				return err
 			}
 			if fw.debug {
-				log.Println("rule added: -t", string(rule.tc.table), "-A", string(rule.tc.chain), len(fw.activeRules[rule.tc])+1, strings.Join(rule.spec, " "))
+				log.Println("rule added: -t", string(rule.tc.table), "-I", string(rule.tc.chain), len(fw.activeRules[rule.tc])+1, strings.Join(rule.spec, " "))
 			}
 		}
 		fw.activateRule(rule)
@@ -214,7 +214,7 @@ func (fw *Firewall) EnsureRules(rules *Ruleset) error {
 				return err
 			}
 			if fw.debug {
-				log.Println("rule added: -t", string(rule.tc.table), "-A", string(rule.tc.chain), 1, strings.Join(rule.spec, " "))
+				log.Println("rule added: -t", string(rule.tc.table), "-I", string(rule.tc.chain), 1, strings.Join(rule.spec, " "))
 			}
 		}
 		fw.activateRule(rule)
