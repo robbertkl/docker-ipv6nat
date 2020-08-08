@@ -73,6 +73,8 @@ About it you can read in a good [article](https://www.redhat.com/en/blog/secure-
 
 You may omit the `-v /lib/modules:/lib/modules:ro` bind mount and `--cap-add SYS_MODULE` if your distro already loaded `ip6_tables` kernel module on boot. If you have a systemd-based distro, you can ensure that on next boot by `echo ip6_tables >/etc/modules-load.d/ipv6nat.conf`, see [modules-load.d(5)](https://www.freedesktop.org/software/systemd/man/modules-load.d.html).
 
+By default, the docker-ipv6nat command runs with the `--retry` flag. See the "Usage Flags" section below for more options. Add them to the end of the `docker run` command.
+
 ### AUR Package
 
 If you are running ArchLinux, you can install the latest version by getting the package from the [AUR](https://aur.archlinux.org/packages/docker-ipv6nat/).
@@ -91,7 +93,32 @@ systemctl start docker-ipv6nat.service
 ### Standalone Binary
 
 Alternatively, you can download the latest release from the [release page](https://github.com/robbertkl/docker-ipv6nat/releases) and run it directly on your host.
-See `docker-ipv6nat --help` for usage flags.
+See below for usage flags.
+
+### Usage Flags
+
+Output from `docker-ipv6nat --help`:
+
+```
+Usage: docker-ipv6 [options]
+
+Automatically configure IPv6 NAT for running docker containers
+
+Options:
+  -cleanup
+    	remove rules when shutting down
+  -debug
+    	log ruleset changes to stdout
+  -retry
+    	keep retrying to reconnect after a disconnect
+  -version
+    	show version
+
+Environment Variables:
+  DOCKER_HOST - default value for -endpoint
+  DOCKER_CERT_PATH - directory path containing key.pem, cert.pem and ca.pem
+  DOCKER_TLS_VERIFY - enable client TLS verification
+```
 
 ## Docker IPv6 configuration
 
