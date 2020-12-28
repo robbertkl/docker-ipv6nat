@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"net"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/robbertkl/docker-ipv6nat"
@@ -18,6 +20,7 @@ var (
 	userlandProxy bool
 	version       bool
 	debug         bool
+	mapIpv4       string
 )
 
 func usage() {
@@ -43,6 +46,7 @@ func initFlags() {
 	flag.BoolVar(&retry, "retry", false, "keep retrying to reconnect after a disconnect")
 	flag.BoolVar(&version, "version", false, "show version")
 	flag.BoolVar(&debug, "debug", false, "log ruleset changes to stdout")
+	flag.StringVar(&mapIpv4, "map-ipv4", "", "IPv4 listen address mapping (IPV4/CIDR=IPV4,...)")
 
 	flag.Usage = usage
 	flag.Parse()
@@ -66,6 +70,25 @@ func main() {
 	}
 }
 
+func parseIpMapping(mapIpv4 string) (map[*net.IPNet]net.IP, error) {
+	res := map[*net.IPNet]net.IP{}
+	for _, map46 := range strings.Split(mapIpv4, ",") {
+		s := strings.Split(map46, "=")
+		if len(s)==2 && s[0] != "" && s[1] != "" {
+			_, ip4, err := net.ParseCIDR(s[0])
+			if err != nil {
+				return nil, fmt.Errorf("Cannot parse %+v IPv4, %e", map46, err)
+			}
+			ip6 := net.ParseIP(s[1])
+			if ip6 == nil {
+				return nil, fmt.Errorf("Cannot parse %+v IPv6, %e", map46)
+			}
+			res[ip4] = ip6
+		}
+	}
+	return res, nil
+}
+
 func run() error {
 	if debug {
 		log.Println("docker-ipv6nat is running in debug mode")
@@ -76,7 +99,12 @@ func run() error {
 		return err
 	}
 
-	state, err := dockeripv6nat.NewState(debug)
+	ipMap, err := parseIpMapping(mapIpv4)
+	if err != nil {
+		return err
+	}
+
+	state, err := dockeripv6nat.NewState(debug, ipMap)
 	if err != nil {
 		return err
 	}

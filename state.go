@@ -13,6 +13,8 @@ type State struct {
 	manager    *Manager
 	networks   map[string]*managedNetwork
 	containers map[string]*managedContainer
+	mapIpv4    map[*net.IPNet]net.IP
+	debug      bool
 }
 
 // fc00::/7, Unique Local IPv6 Unicast Addresses, see RFC 4193
@@ -22,7 +24,7 @@ var ulaCIDR = net.IPNet{
 }
 
 // NewState constructs a new state
-func NewState(debug bool) (*State, error) {
+func NewState(debug bool, mapIpv4 map[*net.IPNet]net.IP) (*State, error) {
 	manager, err := NewManager(debug)
 	if err != nil {
 		return nil, err
@@ -32,6 +34,7 @@ func NewState(debug bool) (*State, error) {
 		manager:    manager,
 		networks:   make(map[string]*managedNetwork),
 		containers: make(map[string]*managedContainer),
+		mapIpv4:    mapIpv4,
 	}, nil
 }
 
@@ -236,6 +239,16 @@ func (s *State) parseContainer(container *docker.Container) *managedContainer {
 
 			if binding.HostIP != "" && binding.HostIP != "0.0.0.0" {
 				ip := net.ParseIP(binding.HostIP)
+				if ip != nil && ip.To4() != nil {
+					// Try map Ipv4 to IPv6
+					for ip4net, ip6 := range s.mapIpv4 {
+						if ip4net.Contains(ip) {
+							log.Printf("Converting listen IP %v to %v (matching %v)", ip, ip6, ip4net)
+							ip = ip6
+							break
+						}
+					}
+				}
 				if ip == nil || ip.To4() != nil {
 					// Skip bindings to IPv4.
 					continue
