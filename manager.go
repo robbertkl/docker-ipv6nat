@@ -99,6 +99,16 @@ func detectHairpinMode() (bool, error) {
 		return false, nil
 	}
 
+	// Old iptables misinterprets prefix matches in new iptables
+	hairpinModeOffRulespec[2] = "127.0.0.0/32"
+
+	hairpinModeOff, err = ipt.Exists(TableNat, ChainOutput, hairpinModeOffRulespec...)
+	if err != nil {
+		return false, err
+	} else if hairpinModeOff {
+		return false, nil
+	}
+
 	return false, errors.New("unable to detect hairpin mode (is the docker daemon running?)")
 }
 
