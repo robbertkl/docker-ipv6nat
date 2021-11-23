@@ -31,3 +31,4 @@ LABEL \
     org.opencontainers.image.vendor="robbertkl" \
     org.opencontainers.version="$APP_VERSION" \
     org.opencontainers.image.licenses="MIT"
+    
