@@ -42,7 +42,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/${{ env.IMAGE_REPOSITORY }}:latest
+            ghcr.io/${{ env.IMAGE_REPOSITORY }}:testing
           labels: |
             org.opencontainers.image.created=${{ env.DATE }}
             org.opencontainers.image.authors=${{ env.AUTHOR }}
