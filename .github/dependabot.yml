@@ -9,6 +9,12 @@ updates:
     reviewers: [robbertkl]
     assignees: [robbertkl]
 
+  - package-ecosystem: gitsubmodule
+    directory: /
+    schedule: {interval: monthly}
+    reviewers: [robbertkl]
+    assignees: [robbertkl]
+
   - package-ecosystem: docker
     directory: /
     schedule: {interval: monthly}
